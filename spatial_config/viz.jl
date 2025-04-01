@@ -63,7 +63,7 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
     # scatter!(length_label_x, length_label_y, markercolor="red", markerstrokecolor="red")
     p = annotate!.(length_label_x, length_label_y, text.(length_label, :black, :right, 10) )
 
-    if savefig != ""
+    if save_filepath != ""
         savefig(save_filepath)
     end
 
@@ -151,7 +151,7 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
         end
     end
 
-    if savefig != ""
+    if save_filepath != ""
         savefig(save_filepath)
     end
 
@@ -204,7 +204,7 @@ function visualize_spatial_lang_problem(save_filepath="")
         end
     end
 
-    if savefig != ""
+    if save_filepath != ""
         savefig(save_filepath)
     end
 
@@ -224,12 +224,9 @@ function visualize_spatial_lang_results(config, locations_to_search, save_filepa
         p = annotate!.(final_position[1], final_position[2], final_position[3], text.(label, :black, 10) )
     end
 
-    if savefig != ""
+    if save_filepath != ""
         savefig(save_filepath)
     end
 
     return p
 end
-
-
-
