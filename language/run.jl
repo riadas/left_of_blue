@@ -5,8 +5,8 @@ config_name = "rect_room_blue_wall_corner_prize"
 
 println(ARGS)
 if length(ARGS) != 0
-    language_variant = ARGS[2]
-    config_name = ARGS[3]
+    language_variant = ARGS[1]
+    config_name = ARGS[2]
 end
 
 config_filepath = "spatial_config/configs/$(config_name).json"
