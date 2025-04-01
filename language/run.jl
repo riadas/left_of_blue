@@ -64,7 +64,7 @@ end
 # visualize results
 include("../spatial_config/viz.jl")
 
-config_output_dir = "language/outputs/$(config_name)"
+config_output_dir = "language/outputs/results/$(config_name)"
 if !isdir(config_output_dir)
     mkdir(config_output_dir)
 end

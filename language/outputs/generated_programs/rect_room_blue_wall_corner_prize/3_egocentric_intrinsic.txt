@@ -1,5 +1,5 @@
-location.wall1.distance / location.wall2.distance == 1
 location.wall1.distance / location.wall2.distance > 1
+right(location)
 location.wall1.distance / location.wall2.distance < 1
 left(location)
-right(location)
+location.wall1.distance / location.wall2.distance == 1
