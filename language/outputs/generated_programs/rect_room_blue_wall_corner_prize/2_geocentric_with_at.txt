@@ -1,0 +1,3 @@
+location.wall1.distance / location.wall2.distance == 1
+location.wall1.distance / location.wall2.distance < 1
+location.wall1.distance / location.wall2.distance > 1

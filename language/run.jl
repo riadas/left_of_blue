@@ -2,7 +2,6 @@ using JSON
 language_variant = "3_egocentric_intrinsic"
 config_name = "rect_room_blue_wall_corner_prize"
 
-
 println(ARGS)
 if length(ARGS) != 0
     language_variant = ARGS[1]
@@ -52,9 +51,18 @@ best_programs = map(i -> programs_and_results[i], best_indices)
 sort!(best_programs, by=tup -> length(tup[1]))
 best_program, locations_to_search = best_programs[1]
 
-## visualize results
-include("../spatial_config/viz.jl")
+# record generated programs
+intermediate_programs_output_dir = "language/outputs/generated_programs/$(config_name)"
+if !isdir(intermediate_programs_output_dir)
+    mkdir(intermediate_programs_output_dir)
+end
 
+open("$(intermediate_programs_output_dir)/$(language_variant).txt", "w+") do f 
+    write(f, join(programs, "\n"))
+end
+
+# visualize results
+include("../spatial_config/viz.jl")
 
 config_output_dir = "language/outputs/$(config_name)"
 if !isdir(config_output_dir)

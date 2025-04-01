@@ -1,0 +1,2 @@
+at(location, blue)
+location.distance == mid

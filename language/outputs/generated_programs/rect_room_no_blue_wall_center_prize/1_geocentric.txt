@@ -1,0 +1,2 @@
+location.distance == far
+location.distance == close

@@ -1,0 +1,4 @@
+at(location, blue)
+at(location, white)
+location.distance == close
+location.distance == far

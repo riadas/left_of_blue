@@ -1,0 +1,7 @@
+location.wall1.distance / location.wall2.distance == 1
+left(location, blue)
+left(location)
+location.wall1.distance / location.wall2.distance > 1
+right(location)
+location.wall1.distance / location.wall2.distance < 1
+right(location, blue)
