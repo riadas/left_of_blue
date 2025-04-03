@@ -1,5 +1,5 @@
 using JSON
-language_variant = "3_egocentric_intrinsic"
+language_variant = "4_egocentric_relative"
 config_name = "rect_room_blue_wall_corner_prize"
 typed = "typed"
 
@@ -10,11 +10,11 @@ if length(ARGS) != 0
     typed = ARGS[3]
 end
 
-config_filepath = "spatial_config/configs/$(config_name).json"
-config = JSON.parsefile(config_filepath)
-
 # import syntax, which also imports semantics
 include("language_variants/$(typed)/$(language_variant)/syntax.jl")
+
+config_filepath = "spatial_config/configs/$(config_name).json"
+config = JSON.parsefile(config_filepath)
 
 # define spatial configuration
 include("../spatial_config/spatial_config.jl")
@@ -22,12 +22,12 @@ scene = define_spatial_reasoning_problem(config_filepath)
 locations = scene.locations
 
 # generate a lot of possible spatial memory expressions
-rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
-b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
+# rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
+# b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
 programs = []
-num_programs = 50
+num_programs = 1000
 for _ in 1:num_programs
-    program = generate_program(typeof(scene.prize), rect=rect, blue=b)
+    program = generate_program(scene.prize) # rect=rect, blue=b
     push!(programs, program)
 end
 programs = unique(programs)
@@ -48,7 +48,15 @@ for program in programs
     push!(formatted_programs, program)
 end
 evaluated_lambdas = map(p -> eval(Meta.parse("location -> $(p)")), formatted_programs)
-results = map(x -> filter(x, scene.locations), evaluated_lambdas)
+# results = map(x -> filter(x, scene.locations), evaluated_lambdas)
+
+results = []
+for i in 1:length(evaluated_lambdas)
+    x = evaluated_lambdas[i]
+    println(formatted_programs[i])
+    push!(results, filter(x, scene.locations))
+end
+
 programs_and_results = [zip(programs, results)...]
 programs_and_results = filter(tup -> scene.prize in tup[2], programs_and_results)
 

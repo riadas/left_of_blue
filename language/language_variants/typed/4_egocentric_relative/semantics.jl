@@ -34,6 +34,18 @@ Base.:(&)(a::HybridBool, b::NonGeoBool) = HybridBool(a.val & b.val)
 Base.:(&)(a::GeoBool, b::HybridBool) = HybridBool(a.val & b.val)
 Base.:(&)(a::NonGeoBool, b::HybridBool) = HybridBool(a.val & b.val)
 
+GeoBool(x::GeoBool) = GeoBool(x.val)
+GeoBool(x::NonGeoBool) = GeoBool(x.val)
+GeoBool(x::HybridBool) = GeoBool(x.val)
+
+NonGeoBool(x::GeoBool) = NonGeoBool(x.val)
+NonGeoBool(x::NonGeoBool) = NonGeoBool(x.val)
+NonGeoBool(x::HybridBool) = NonGeoBool(x.val)
+
+HybridBool(x::GeoBool) = HybridBool(x.val)
+HybridBool(x::NonGeoBool) = HybridBool(x.val)
+HybridBool(x::HybridBool) = HybridBool(x.val)
+
 # --- LoB PROBLEM SPECIFICATION ---
 ## coarsification of depths of walls (i.e. distances from viewer facing walls)
 @enum DEPTH close=5 mid=10 far=15
@@ -156,10 +168,10 @@ end
 # --- AMBIGUOUS DEVELOPMENTAL STAGE: ORDER UNKNOWN ---
 # LoB: "between" language learned -- is this wall between walls with these colors?
 function between(wall::Wall, color1::COLOR, color2::COLOR, locations::Vector{Location})::HybridBool
-    HybridBool(prev(wall, locations).wall1.color == color1 && next(wall, locations).wall2.color == color2)
+    HybridBool((prev(wall, locations).wall1.color == color1) & (next(wall, locations).wall2.color == color2))
 end
 
 # LoB: "between" language learned -- is this corner between walls with these colors?
-function between(corner::Corner, color1::COLOR, color2::COLOR, locations::Vector{Location})::HybridBool
-    HybridBool(corner.wall1.color == color1 && corner.wall2.color == color2)
+function between(corner::Corner, color1::COLOR, color2::COLOR)::HybridBool
+    HybridBool((corner.wall1.color == color1) & (corner.wall2.color == color2))
 end

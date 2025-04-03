@@ -125,6 +125,6 @@ function between(wall::Wall, color1::COLOR, color2::COLOR, locations::Vector{Loc
 end
 
 # LoB: "between" language learned -- is this corner between walls with these colors?
-function between(corner::Corner, color1::COLOR, color2::COLOR, locations::Vector{Location})
+function between(corner::Corner, color1::COLOR, color2::COLOR)
     corner.wall1.color == color1 && corner.wall2.color == color2
 end

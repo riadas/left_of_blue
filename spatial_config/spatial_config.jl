@@ -1,5 +1,5 @@
 using JSON 
-include("../scratch/demo.jl")
+# include("../scratch/demo.jl")
 
 function define_spatial_reasoning_problem(filepath::String)
     config = JSON.parsefile(filepath)

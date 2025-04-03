@@ -1,57 +1,188 @@
 # import semantics
+include("semantics.jl")
+using StatsBase 
 
-function generate_program(beacon; rect=true, blue=true)
-    if beacon == Wall
-        if rand() > 0.5
-            if rect 
-                choices = ["close", "far"]
-            else
-                choices = ["mid"]
-            end
-            return "location.depth == $(rand(choices))"
-        else
-            if blue 
-                return "at(location, blue)"
-            else
-                return "at(location, white)"
-            end
-        end
-    elseif beacon == Corner
-        options = [1,2,3]
-        option = rand(options)
-        if option == 1
-            direction_choices = ["left", "right"]
-            if blue 
-                color = "blue"
-            else
-                color = "white"
-            end
-            return "$(rand(direction_choices))(location, $(color))"
-        elseif option == 2
-            choices = [">", "<", "=="]
-            return "location.wall1.depth $(rand(choices)) location.wall2.depth"
-        else
-            choices = ["left", "right"]
-            if rect 
-                facing_choices = ["close", "far"]
-            else
-                facing_choices = ["mid"]
-            end
-            return "$(rand(choices))(location, $(rand(facing_choices)))"
-        end
-    elseif beacon == Spot
-        options = [1,2,3]
-        option = rand(options)
-        if option == 1 # relative left/right
-            choices = ["left", "right"]
-            return "$(rand(choices))(location, center)"
-        elseif option == 2 # intrinsic left/right
-            choices = ["left", "right"]
-            return "$(rand(choices))(location)"
-        else # default
-            return "true"
-        end
+function generate_program(beacon)
+    gen_pred(beacon)
+end
+
+recurse_param = 0.2
+
+function gen_pred(prize::Wall)
+    sample([
+        gen_geo_pred(prize),
+        gen_nongeo_pred(prize),
+        gen_hybrid_pred(prize),
+    ])
+end
+
+function gen_pred(prize::Corner)
+    sample([
+        gen_geo_pred(prize),
+        gen_hybrid_pred(prize),
+    ])
+end
+
+function gen_pred(prize::Spot)
+    gen_geo_pred(prize)
+end
+
+# predicate is about a Wall or Corner
+function gen_geo_pred(prize::Wall)
+    pred = "$(gen_geo_field(prize)) $(gen_geo_comparison()) $(gen_geo_value())"
+    if rand() < recurse_param 
+        "($(pred)) & ($(gen_geo_pred(prize)))"
     else
-        # throw error
+        pred
     end
+end
+
+function gen_geo_pred(prize::Corner)
+    pred = sample([
+        "$(gen_geo_field(prize)) $(gen_geo_comparison()) $(gen_geo_field(prize))",
+        "$(gen_geo_function_call(prize))"
+    ])
+    if rand() < recurse_param 
+        "($(pred)) & ($(gen_geo_pred(prize)))"
+    else
+        pred
+    end
+end
+
+function gen_nongeo_pred(prize::Wall)
+    pred = "$(gen_nongeo_field(prize)) $(gen_nongeo_comparison()) $(gen_nongeo_value())" 
+    if rand() < recurse_param
+        "($(pred)) & ($(gen_nongeo_pred(prize)))"     
+    else
+        pred
+    end
+end 
+
+function gen_hybrid_pred(prize::Wall)
+    pred = sample([
+        "($(gen_geo_pred(prize))) & ($(gen_nongeo_pred(prize)))",
+        "$(gen_hybrid_function_call(prize))"
+    ])
+    if rand() < recurse_param
+        sample([
+            "($(pred)) & ($(gen_hybrid_pred(prize)))",
+            "($(pred)) & ($(gen_geo_pred(prize)))",
+            "($(pred)) & ($(gen_nongeo_pred(prize)))",
+        ])
+    else
+        pred
+    end
+end
+
+function gen_hybrid_pred(prize::Corner)
+    pred = sample([
+        "$(gen_hybrid_function_call(prize))"
+    ])
+    if rand() < recurse_param
+        sample([
+            "($(pred)) & ($(gen_hybrid_pred(prize)))",
+            "($(pred)) & ($(gen_geo_pred(prize)))",
+        ])
+    else
+        pred
+    end
+end
+
+# helpers 
+
+function gen_geo_field(prize::Wall)
+    "location.depth"
+end
+
+function gen_geo_field(prize::Corner)
+    sample([
+        "location.wall1.depth",
+        "location.wall2.depth"
+    ])
+end
+
+function gen_geo_comparison()
+    sample([
+        "==",
+        "!=",
+        ">",
+        "<"
+    ])
+end
+
+function gen_geo_value()
+    sample([
+        "close",
+        "mid",
+        "far"
+    ])
+end
+
+function gen_geo_function_call(prize::Corner)
+    sample([
+        "left(location, $(gen_geo_value()))",
+        "right(location, $(gen_geo_value()))",
+    ])
+end
+
+function gen_nongeo_value()
+    sample([
+        "blue",
+        "white"
+    ])
+end
+
+function gen_nongeo_field(prize::Wall)
+    "location.color"
+end
+
+# function gen_hybrid_field(prize::Corner)
+#     sample([
+#         "location.wall1.color",
+#         "location.wall2.color"
+#     ])
+# end
+
+function gen_nongeo_comparison()
+    sample([
+        "==",
+        "!="
+    ])
+end
+
+function gen_hybrid_function_call(prize::Wall)
+    sample([
+        "at(location, $(gen_nongeo_value()))",
+        "left(location, $(gen_nongeo_value()), locations)",
+        "right(location, $(gen_nongeo_value()), locations)",
+        "between(location, $(gen_nongeo_value()), $(gen_nongeo_value()), locations)"
+    ])
+end
+
+function gen_hybrid_function_call(prize::Corner)
+    sample([
+        "left(location, $(gen_nongeo_value()))",
+        "right(location, $(gen_nongeo_value()))",
+        "between(location, $(gen_nongeo_value()), $(gen_nongeo_value()))"
+    ])
+end
+
+# predicate is about a Spot
+
+function gen_geo_pred(prize::Spot)
+    pred = "$(gen_geo_function_call(prize))"
+    if rand() < recurse_param
+        "($(pred)) & ($(gen_geo_pred(prize)))"
+    else
+        pred
+    end
+end
+
+function gen_geo_function_call(prize::Spot)
+    sample([
+        "left(location)",
+        "right(location)",
+        "left(location, Spot(Position(0, 0, 0)))",
+        "right(location, Spot(Position(0, 0, 0)))"
+    ])
 end
