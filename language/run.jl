@@ -1,25 +1,28 @@
 using JSON
 language_variant = "3_egocentric_intrinsic"
 config_name = "rect_room_blue_wall_corner_prize"
+typed = "typed"
 
 println(ARGS)
 if length(ARGS) != 0
     language_variant = ARGS[1]
     config_name = ARGS[2]
+    typed = ARGS[3]
 end
 
 config_filepath = "spatial_config/configs/$(config_name).json"
 config = JSON.parsefile(config_filepath)
 
 # import syntax, which also imports semantics
-include("language_variants/$(language_variant)/syntax.jl")
+include("language_variants/$(typed)/$(language_variant)/syntax.jl")
 
 # define spatial configuration
 include("../spatial_config/spatial_config.jl")
 scene = define_spatial_reasoning_problem(config_filepath)
+locations = scene.locations
 
 # generate a lot of possible spatial memory expressions
-rect = filter(l -> l isa Wall && l.distance == mid, scene.locations) == []
+rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
 b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
 programs = []
 num_programs = 50
@@ -33,6 +36,10 @@ programs = unique(programs)
 formatted_programs = []
 for program in programs
     println(program) 
+    if typed == "typed"
+        program = "let x = $(program); x isa TypedBool ? x.val : x end"
+    end
+
     if scene.prize isa Wall 
         program = "location isa Wall && $(program)"
     elseif scene.prize isa Corner
@@ -50,6 +57,8 @@ best_programs = map(i -> programs_and_results[i], best_indices)
 
 sort!(best_programs, by=tup -> length(tup[1]))
 best_program, locations_to_search = best_programs[1]
+println(best_program)
+println(locations_to_search)
 
 # record generated programs
 intermediate_programs_output_dir = "language/outputs/generated_programs/$(config_name)"

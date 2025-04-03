@@ -9,14 +9,14 @@ function generate_program(beacon; rect=true, blue=true)
             else
                 choices = ["mid"]
             end
-            return "location.distance == $(rand(choices))"
+            return "location.depth == $(rand(choices))"
         else
             choices = ["white", "blue"]
             return "at(location, $(rand(choices)))"
         end
     elseif beacon == Corner
         choices = [">", "<", "=="]
-        return "location.wall1.distance / location.wall2.distance $(rand(choices)) 1"
+        return "location.wall1.depth $(rand(choices)) location.wall2.depth"
     elseif beacon == Spot 
         return "true"
     else

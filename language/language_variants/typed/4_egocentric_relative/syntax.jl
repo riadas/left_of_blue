@@ -8,7 +8,7 @@ function generate_program(beacon; rect=true, blue=true)
             else
                 choices = ["mid"]
             end
-            return "location.distance == $(rand(choices))"
+            return "location.depth == $(rand(choices))"
         else
             if blue 
                 return "at(location, blue)"
@@ -29,10 +29,15 @@ function generate_program(beacon; rect=true, blue=true)
             return "$(rand(direction_choices))(location, $(color))"
         elseif option == 2
             choices = [">", "<", "=="]
-            return "location.wall1.distance / location.wall2.distance $(rand(choices)) 1"
+            return "location.wall1.depth $(rand(choices)) location.wall2.depth"
         else
             choices = ["left", "right"]
-            return "$(rand(choices))(location)"
+            if rect 
+                facing_choices = ["close", "far"]
+            else
+                facing_choices = ["mid"]
+            end
+            return "$(rand(choices))(location, $(rand(facing_choices)))"
         end
     elseif beacon == Spot
         options = [1,2,3]

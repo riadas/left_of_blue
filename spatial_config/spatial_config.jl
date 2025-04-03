@@ -34,15 +34,13 @@ function define_left_of_blue_problem(config)
     wall2 = Wall(far_distance, accent_color)
     wall3 = Wall(close_distance, white)
     wall4 = Wall(far_distance, white)
-    walls = [wall1, wall2, wall3, wall4]
 
     corner1 = Corner(wall1, wall2)
     corner2 = Corner(wall2, wall3)
     corner3 = Corner(wall3, wall4)
     corner4 = Corner(wall4, wall1)
-    corners = [corner1, corner2, corner3, corner4]
 
-    locations = [walls..., corners...]
+    locations = [wall1, corner1, wall2, corner2, wall3, corner3, wall4, corner4] 
     prize_location = corner_prize ? corner1 : wall2
     scene = Scene(locations, prize_location)
 
