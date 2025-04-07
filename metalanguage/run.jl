@@ -10,7 +10,17 @@ at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
 my_left_function = Function("my_left", ["location_arg", "depth_arg"], [Corner, DEPTH], "")
 left_of_function = Function("left_of", ["location_arg", "color_arg"], [Corner, COLOR], "")
 
-ordered_function_sigs = [at_function, my_left_function, left_of_function] # , left_of_function
+my_left_function_spot = Function("my_left", ["location_arg"], [Spot], "")
+left_of_function_spot = Function("left_of", ["location1_arg", "location2_arg"], [Spot, Spot], "")
+
+my_left_function_whole = Function("my_left", ["location_arg"], [Whole], "")
+left_of_function_whole = Function("left_of", ["location1_arg"], [Whole], "")
+
+ordered_function_sigs = [at_function, 
+                         my_left_function, 
+                         my_left_function_spot, 
+                         left_of_function, 
+                         left_of_function_spot] # , left_of_function
 
 synthesized_semantics = []
 for function_sig in ordered_function_sigs
@@ -72,6 +82,11 @@ for function_sig in ordered_function_sigs
                 end
                 programs = unique(programs)
 
+                # exclude programs that don't include the input argument
+                println(programs)
+                programs = filter(x -> x == "true" || occursin("location", x), programs)
+                println(programs)
+
                 # evaluate all the possible spatial memory representations and select the best one
                 formatted_programs = []
                 for program in programs
@@ -98,7 +113,7 @@ for function_sig in ordered_function_sigs
 
                 best_indices = findall(t -> length(t[2]) == minimum(map(tup -> length(tup[2]), programs_and_results)), programs_and_results)
                 best_programs = map(i -> programs_and_results[i], best_indices)
-
+                println(best_programs)
                 sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
                 best_program, locations_to_search = best_programs[1]
                 println(best_program)

@@ -240,6 +240,16 @@ function genCOLOR_semantics(arg_names::Vector{String}, arg_types::Vector{DataTyp
     "$(wall).color"
 end
 
+function genSpot_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
+    idxs = findall(x -> x == Spot, arg_types)
+    rand(map(i -> arg_names[i], idxs))
+end
+
+function genWhole_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
+    idxs = findall(x -> x == Whole, arg_types)
+    rand(map(i -> arg_names[i], idxs))
+end
+
 function genInt_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
     type = arg_types[1]
     if type in [Spot, Whole]
@@ -249,11 +259,11 @@ end
 
 function genInt_semantics(arg_name::String, arg_type::DataType)
     choices = ["0", "-1", "1"]
-    if arg_type isa Spot
-        for coord in ["x", "y", "z"]
+    if arg_type == Spot
+        for coord in ["x"] # "y", "z"
             push!(choices, "$(arg_name).position.$(coord)")
         end
-    elseif arg_type isa Whole
+    elseif arg_type == Whole
         push!(choices, ["$(arg_name).green.x", "$(arg_name).red.x"]...)
     end
     rand(choices)
@@ -292,6 +302,10 @@ function Base.size(x::Expr)
         end
     end
     l
+end
+
+function Base.size(x::Union{Symbol, Int, Bool})
+    1
 end
 
 function edit_distance(x1::Expr, x2::Expr)

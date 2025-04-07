@@ -81,6 +81,16 @@ function my_left(location_arg::Corner, depth_arg::DEPTH)::Bool
 end
 
  
+function my_left(location_arg::Spot)::Bool
+    location_arg.position.x < 0
+end
+
+ 
 function left_of(location_arg::Corner, color_arg::COLOR)::Bool
     at(location_arg.wall2, color_arg)
+end
+
+ 
+function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
+    location2_arg.position.x < location1_arg.position.x
 end
