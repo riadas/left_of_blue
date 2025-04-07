@@ -11,6 +11,8 @@ function define_spatial_reasoning_problem(config)
         return define_left_of_blue_problem(config)
     elseif config["type"] == "spatial_lang_test"
         return define_spatial_lang_problem()
+    elseif config["type"] == "red_green_test"
+        return define_red_green_problem(config)
     end
 end
 
@@ -59,3 +61,39 @@ function define_spatial_lang_problem()
     scene = Scene(spots, spots[1])
     return scene    
 end
+
+function define_red_green_problem(config)
+    diagonal = config["diagonal"]
+    prize_left_color = config["prize_left_color"]
+    order = config["order"]
+
+    match = Whole(
+        Half(prize_left_color == "green" ? -1 : 1), 
+        Half(prize_left_color == "green" ? 1 : -1),
+        diagonal 
+    )
+
+    reflection = Whole(
+        Half(prize_left_color == "green" ? 1 : -1), 
+        Half(prize_left_color == "green" ? -1 : 1),
+        diagonal 
+    )
+
+    different = Whole(
+        Half(prize_left_color == "green" ? -1 : 1), 
+        Half(prize_left_color == "green" ? 1 : -1),
+        !diagonal
+    )
+
+    associations = Dict(
+        "M" => match,
+        "R" => reflection,
+        "D" => different,
+    )
+
+    locations = map(x -> associations[x], order)
+    scene = Scene(locations, match)
+    return scene
+end
+
+scene = define_spatial_reasoning_problem("spatial_config/configs/rect_room_blue_wall_center_prize.json")

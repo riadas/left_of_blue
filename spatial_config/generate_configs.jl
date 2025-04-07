@@ -1,4 +1,5 @@
 using JSON 
+using Combinatorics
 
 # generate different left of blue configurations
 dimension_ratios = [(2,3), (1,1)]
@@ -29,4 +30,25 @@ config["type"] = "spatial_lang_test"
 
 open("""spatial_config/configs/spatial_lang_test.json""", "w") do f
     JSON.print(f, config)
+end
+
+# generate the red-green test configurations
+prize_left_colors = ["green", "red"]
+diagonals = [false, true]
+orders = [permutations(["M", "R", "D"])...]
+
+for prize_left_color in prize_left_colors 
+    for diagonal in diagonals 
+        for order in orders
+            config = Dict()
+            config["type"] = "red_green_test"
+            config["prize_left_color"] = prize_left_color
+            config["diagonal"] = diagonal 
+            config["order"] = order 
+
+            open("""spatial_config/configs/green_red_test_left_color_$(prize_left_color)_diagonal_$(diagonal)_order_$(join(order, "_")).json""", "w") do f
+                JSON.print(f, config)
+            end
+        end
+    end
 end

@@ -1,4 +1,14 @@
-include("base_semantics.jl")
+include("demo.jl")
+
+struct Whole <: Location
+    green::Half
+    red::Half
+    diagonal::Bool
+end
+
+struct Half
+    x::Int
+end
 
 mutable struct Function 
     name::String
@@ -7,18 +17,18 @@ mutable struct Function
     definition::String
 end
 
-global base_syntax = Dict(
-    Wall =>   "location.depth == genDEPTH", # | lib_at Wall COLOR
-    Corner => "location.wall1.depth genComparison location.wall2.depth",
-    Spot =>   "true",
-    Whole =>  "true", 
+base_syntax = Dict(
+    Wall:   "location.depth == genDEPTH | lib_at Wall COLOR",
+    Corner:  "location.wall1.depth genComparison location.wall2.depth",
+    Spot:    "true",
+    Whole:   "true", 
 )
 
-global base_semantics = Dict(
-    Wall =>   "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
-    Corner => "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
-    Spot =>   "genInt genComparison genInt",
-    Whole =>  "genInt genComparison genInt"
+base_semantics = Dict(
+    Wall:   "genWall.arg2 genComparison arg2 | lib_at Wall COLOR",
+    Corner: "genWall.arg2 genComparison arg2 | lib_at Wall COLOR",
+    Spot:   "genInt genComparison genInt",
+    Whole:  "genInt genComparison genInt"
 )
 
 function update_semantics_cfg(current_semantics_cfg, function_signature::Function)
@@ -30,13 +40,6 @@ function update_semantics_cfg(current_semantics_cfg, function_signature::Functio
     new_option = """lib_$(name) $(join(arg_types, " "))"""
     new_cfg = "$(cfg) | $(new_option)"
     current_semantics_cfg[first_arg_type] = new_cfg
-
-    if first_arg_type == Wall 
-        current_semantics_cfg[Corner] = new_cfg
-    elseif first_arg_type == Corner 
-        current_semantics_cfg[Wall] = new_cfg
-    end
-
     return current_semantics_cfg
 end
 
@@ -55,7 +58,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
             argument_expressions = []
             
             if first_arg_type in [Wall, Corner]
-                if function_signature.arg_types[end] != eval(Meta.parse(lib_function_arg_types[end]))
+                if function_signature.arg_types[end] != eval(lib_function_arg_types[end])
                     continue
                 end
             end
@@ -66,7 +69,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
                     push!(arg_expressions, function_signature.arg_names[end])
                 else
                     arg_type = lib_function_arg_types[i]
-                    arg_expression = eval(Meta.parse("gen$(arg_type)_semantics"))(function_signature.arg_names, function_signature.arg_types)     
+                    arg_expression = eval("gen$(arg_type)_semantics")(function_signature.arg_names, function_signature.arg_types)     
                     push!(arg_expressions, arg_expression)
                 end
             end
@@ -75,17 +78,12 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
         else
             components = split(option_str, " ")
             formatted_components = []
-            for component in components 
+            for component of components 
                 formatted_component = component
-                
-                if occursin("{arg", component)
-                    arg_idx = parse(Int, split(component, "{arg")[end][1])
-                    arg_type = function_signature.arg_types[arg_idx]
-                    formatted_component = replace(formatted_component, "{arg$(arg_idx)}" => string(arg_type))
-                elseif occursin("arg", component)
+                if occursin("arg", component)
                     arg_idx = parse(Int, split(component, "arg")[end][1])
                     arg_name = function_signature.arg_names[arg_idx]
-                    formatted_component = replace(formatted_component, "arg$(arg_idx)" => arg_name)
+                    formatted_component = replace(formatted_component, "arg$(arg_idx)" => arg_name)                
                 end
 
                 if occursin(".", formatted_component)
@@ -94,8 +92,8 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
                     formatted_component = "$(eval(Meta.parse(part1))(function_signature.arg_names, function_signature.arg_types)).$(part2)"
                 end
 
-                if occursin("gen", formatted_component)
-                    formatted_component = eval(Meta.parse("$(formatted_component)_semantics"))(function_signature.arg_names, function_signature.arg_types)
+                if "gen" in formatted_component
+                    formatted_component = eval(formatted_component)(function_signature.arg_names, function_signature.arg_types)
                 end
 
                 push!(formatted_components, formatted_component)
@@ -107,7 +105,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
     rand(options)
 end
 
-function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
+function generate_syntax(prize_type::DataType, current_syntax_cfg)
     cfg = current_syntax_cfg[prize_type]
     arg_names = ["location"]
     arg_types = [prize_type]
@@ -124,7 +122,7 @@ function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
             arg_expressions = []
             for i in 1:length(lib_function_arg_types)
                 arg_type = lib_function_arg_types[i]
-                arg_expression = eval(Meta.parse("gen$(arg_type)_syntax"))(arg_names, arg_types, rect=rect)     
+                arg_expression = eval("gen$(arg_type)_syntax")(function_signature.arg_names, function_signature.arg_types)     
                 push!(arg_expressions, arg_expression)
             
             end
@@ -135,7 +133,7 @@ function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
             formatted_components = []
             for component in components 
                 if occursin("gen", component)
-                    formatted_component = eval(Meta.parse("$(component)_syntax"))(arg_names, arg_types, rect=rect)
+                    formatted_component = eval("$(component)_syntax")(arg_names, arg_types)
                     push!(formatted_components, formatted_component)
                 else
                     push!(formatted_components, component)
@@ -162,39 +160,35 @@ end
 
 # ----- syntax generator functions ----- 
 
-function genWall_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genWall_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     "location"
 end
 
-function genCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     "location"
 end
 
-function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
-    if rect 
-        rand(["close", "far"])
-    else
-        rand(["mid"])
-    end
+function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
+    rand(["close", "mid", "far"])
 end
 
-function genCOLOR_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genCOLOR_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     rand(["blue", "white"])
 end
 
-function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     idxs = findall(x -> x == Spot, arg_types)
     names = map(i -> arg_names[i], idxs)
     rand([names..., "Spot(Position(0, 0, 0))"])
 end
 
-function genWhole_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genWhole_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     idxs = findall(x -> x == Whole, arg_types)
     names = map(i -> arg_names[i], idxs)
     rand(names)
 end
 
-function genComparison_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genComparison_syntax(arg_names::Vector{String}, arg_types::Vector{DataType})
     rand(["<", ">", "=="])
 end
 
@@ -206,10 +200,10 @@ function genWall_semantics(arg_names::Vector{String}, arg_types::Vector{DataType
 
     if type == Wall 
         choice = rand(["$(arg_name)", 
-                        "prev($(arg_name), locations).wall1", 
-                        "prev($(arg_name), locations).wall2", 
-                        "next($(arg_name), locations).wall1",
-                        "next($(arg_name), locations).wall2"])
+                        "prev($(arg_name)).wall1", 
+                        "prev($(arg_name)).wall2", 
+                        "next($(arg_name)).wall1",
+                        "next($(arg_name)).wall2"])
     elseif type == Corner
         choice = rand(["$(arg_name).wall1",
                         "$(arg_name).wall2"])
@@ -222,8 +216,8 @@ function genCorner_semantics(arg_names::Vector{String}, arg_types::Vector{DataTy
     type = arg_types[1]
 
     if type == Wall 
-        choice = rand(["prev($(arg_name), locations)",
-                       "next($(arg_name), locations)"])
+        choice = rand(["prev($(arg_name))",
+                       "next($(arg_name))"])
     elseif type == Corner
         choice = rand(["$(arg_name)"])
     end
@@ -231,19 +225,19 @@ function genCorner_semantics(arg_names::Vector{String}, arg_types::Vector{DataTy
 end
 
 function genDEPTH_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    wall = genWall_semantics(arg_names, arg_types)
+    wall = genWall(arg_names, arg_types)
     "$(wall).depth"
 end
 
 function genCOLOR_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    wall = genWall_semantics(arg_names, arg_types)
+    wall = genWall(arg_names, arg_types)
     "$(wall).color"
 end
 
 function genInt_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
     type = arg_types[1]
     if type in [Spot, Whole]
-        genInt_semantics(rand(arg_names), type)
+        genInt(rand(arg_names), type)
     end
 end
 
@@ -282,65 +276,27 @@ function format_new_function_string(function_sig)
     """
 end
 
-function Base.size(x::Expr)
-    l = 0 
-    for arg in x.args 
-        if arg isa Expr 
-            l += size(arg)
-        else
-            l += 1
-        end
-    end
-    l
+function_sig = Function("at", ["location", "color"], [Wall, COLOR], "")
+
+possible_semantics = []
+for i in 1:1000
+    semantics = generate_semantics(function_sig, base_semantics_cfg)
+end
+possible_semantics = unique(possible_semantics)
+
+# update syntax cfg to include function
+updated_syntax = update_syntax_cfg(base_syntax, function_sig)
+
+for definition in possible_semantics 
+    function_sig.definition = definition
+    new_function_definition_str = format_new_function_string(function_sig)
+
+    # update semantics.jl file with new function and import file
+
+    # generate lots of programs in the new language, and measure performance across suite of spatial configurations
+    # if performance is higher than base language, save that program and its score
+
 end
 
-function edit_distance(x1::Expr, x2::Expr)
-    same_structure = equivalent_tree_structure(x1, x2)
-    if !same_structure 
-        -1
-    end
-
-    function edit_dist(x1::Expr, x2::Expr)
-        dist = 0 
-        if x1.head != x2.head 
-            dist += 1
-        end
-
-        for i in 1:length(x1.args)
-            arg1 = x1.args[i]
-            arg2 = x2.args[i]
-
-            if arg1 isa Expr && arg2 isa Expr 
-                dist += edit_dist(arg1, arg2)
-            elseif arg1 != arg2
-                dist += 1
-            end
-
-        end 
-
-        dist
-    end
-
-    edit_dist(x1, x2)
-end
-
-function equivalent_tree_structure(x1::Expr, x2::Expr)
-    if length(x1.args) != length(x2.args)
-        false
-    else
-        for i in 1:length(x1.args)
-            arg1 = x1.args[i]
-            arg2 = x2.args[i]
-
-            if arg1 isa Expr && arg2 isa Expr 
-                if !equivalent_tree_structure(arg1, arg2)
-                    false
-                end
-            elseif arg1 isa Expr && !(arg2 isa Expr) || !(arg1 isa Expr) && arg2 isa Expr    
-                false
-            end
-
-        end
-    end
-    true
-end
+# TODO: define measure for computing performance over suite of spatial configurations
+# TODO: define ordered list of functions to add 
