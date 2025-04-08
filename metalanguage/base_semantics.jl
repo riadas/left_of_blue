@@ -49,7 +49,7 @@ end
 
 struct Whole <: Location
     green::Half
-    red::Half
+    coral::Half
     diagonal::Bool
 end
 

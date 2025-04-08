@@ -148,7 +148,7 @@ function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true, sh
     rand(options)
 end
 
-function update_syntax_cfg(current_syntax_cfg, function_signature::Function)
+function update_syntax_cfg(current_syntax_cfg, function_signature::Function; remove=false)
     first_arg_type = function_signature.arg_types[1]
     if first_arg_type != Half
         cfg = current_syntax_cfg[first_arg_type] 
@@ -160,8 +160,12 @@ function update_syntax_cfg(current_syntax_cfg, function_signature::Function)
     name = function_signature.name 
     arg_types = function_signature.arg_types 
     new_option = """lib_$(name) $(join(arg_types, " "))"""
-    new_cfg = "$(cfg) | $(new_option)"
-    current_syntax_cfg[first_arg_type] = new_cfg
+    if !remove 
+        new_cfg = "$(cfg) | $(new_option)"
+        current_syntax_cfg[first_arg_type] = new_cfg
+    else
+        current_syntax_cfg[first_arg_type] = replace(cfg, " | $(new_option)" => "")
+    end
     return current_syntax_cfg
 end
 
@@ -198,7 +202,7 @@ function genHalf_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; 
     names = map(i -> arg_names[i], idxs)
     options = []
     for name in names 
-        push!(options, "$(name).red")
+        push!(options, "$(name).coral")
         push!(options, "$(name).green")
     end
     rand(options)
