@@ -107,7 +107,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
     rand(options)
 end
 
-function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
+function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true, shift=0)
     cfg = current_syntax_cfg[prize_type]
     arg_names = ["location"]
     arg_types = [prize_type]
@@ -124,7 +124,7 @@ function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
             arg_expressions = []
             for i in 1:length(lib_function_arg_types)
                 arg_type = lib_function_arg_types[i]
-                arg_expression = eval(Meta.parse("gen$(arg_type)_syntax"))(arg_names, arg_types, rect=rect)     
+                arg_expression = eval(Meta.parse("gen$(arg_type)_syntax"))(arg_names, arg_types, rect=rect, shift=shift)     
                 push!(arg_expressions, arg_expression)
             
             end
@@ -135,7 +135,7 @@ function generate_syntax(prize_type::DataType, current_syntax_cfg; rect=true)
             formatted_components = []
             for component in components 
                 if occursin("gen", component)
-                    formatted_component = eval(Meta.parse("$(component)_syntax"))(arg_names, arg_types, rect=rect)
+                    formatted_component = eval(Meta.parse("$(component)_syntax"))(arg_names, arg_types, rect=rect, shift=shift)
                     push!(formatted_components, formatted_component)
                 else
                     push!(formatted_components, component)
@@ -167,15 +167,15 @@ end
 
 # ----- syntax generator functions ----- 
 
-function genWall_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genWall_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     "location"
 end
 
-function genCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     "location"
 end
 
-function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     if rect 
         rand(["close", "far"])
     else
@@ -183,17 +183,17 @@ function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType};
     end
 end
 
-function genCOLOR_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genCOLOR_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     rand(["blue", "white"])
 end
 
-function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     idxs = findall(x -> x == Spot, arg_types)
     names = map(i -> arg_names[i], idxs)
-    rand([names..., "Spot(Position(0, 0, 0))"])
+    rand([names..., "Spot(Position($(shift), 0, 0))"])
 end
 
-function genHalf_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genHalf_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     idxs = findall(x -> x == Whole, arg_types)
     names = map(i -> arg_names[i], idxs)
     options = []
@@ -204,7 +204,7 @@ function genHalf_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; 
     rand(options)
 end
 
-function genComparison_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genComparison_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     rand(["<", ">", "=="])
 end
 
@@ -270,7 +270,7 @@ end
 function genInt_semantics(arg_name::String, arg_type::DataType)
     choices = ["0", "-1", "1"]
     if arg_type == Spot
-        for coord in ["x"] # "y", "z"
+        for coord in ["x", "y", "z"] # "y", "z"
             push!(choices, "$(arg_name).position.$(coord)")
         end
     elseif arg_type == Half

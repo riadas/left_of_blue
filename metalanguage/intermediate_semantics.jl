@@ -97,5 +97,5 @@ function left_of(location_arg::Corner, color_arg::COLOR)::Bool
 end
 
 function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location2_arg.position.x > location1_arg.position.x
+    location2_arg.position.z > location1_arg.position.z
 end

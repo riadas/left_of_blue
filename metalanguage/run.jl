@@ -69,6 +69,7 @@ for function_sig in ordered_function_sigs
         for config_name in readdir("spatial_config/configs")
             # all non-control input spatial problems
             if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name)
+                # println(config_name)
                 config_filepath = "spatial_config/configs/$(config_name)"
                 config = JSON.parsefile(config_filepath)
 
@@ -77,11 +78,12 @@ for function_sig in ordered_function_sigs
 
                 # generate a lot of possible spatial memory expressions
                 rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
+                shift = occursin("shift", config_name) ? parse(Int, replace(split(config_name, "shift_")[end], ".json" => "")) : 0
                 # b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
                 programs = []
                 num_programs = 1000
                 for _ in 1:num_programs
-                    program = generate_syntax(typeof(scene.prize), base_syntax, rect=rect) # rect=rect, blue=b
+                    program = generate_syntax(typeof(scene.prize), base_syntax, rect=rect, shift=shift) # rect=rect, blue=b
                     push!(programs, program)
                 end
                 programs = unique(programs)
@@ -167,6 +169,9 @@ for function_sig in ordered_function_sigs
                     best_program, locations_to_search = best_programs[1]
                     # println(best_program)
                     # println(locations_to_search)
+                    # println(filter(x -> occursin("left_of", x), programs))
+                    # println(base_syntax[typeof(scene.prize)])
+                    # println("\n")
     
                     scores[config_name] = 1/length(locations_to_search)
                 end

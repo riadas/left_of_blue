@@ -104,11 +104,13 @@ while length(sig_dict) != 0
 
                     # generate a lot of possible spatial memory expressions
                     rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
+                    shift = occursin("shift", config_name) ? parse(Int, replace(split(config_name, "shift_")[end], ".json" => "")) : 0
+
                     # b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
                     programs = []
                     num_programs = 1000
                     for _ in 1:num_programs
-                        program = generate_syntax(typeof(scene.prize), base_syntax, rect=rect) # rect=rect, blue=b
+                        program = generate_syntax(typeof(scene.prize), base_syntax, rect=rect, shift=shift) # rect=rect, blue=b
                         push!(programs, program)
                     end
                     programs = unique(programs)
