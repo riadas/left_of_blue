@@ -4,19 +4,19 @@ using Combinatorics
 # generate different left of blue configurations
 dimension_ratios = [(2,3), (1,1)]
 accent_walls = [true, false]
-corner_prizes = [true, false]
+prize_specs = ["left", "right", "center", "far-left", "far-right"]
 
 for ratio in dimension_ratios
     for accent_wall in accent_walls
-        for corner_prize in corner_prizes
+        for prize_spec in prize_specs
             config = Dict()
             config["type"] = "left_of_blue"
             config["length"] = ratio[1]
             config["width"] = ratio[2]
             config["accent_wall"] = accent_wall
-            config["corner_prize"] = corner_prize
+            config["prize"] = prize_spec
 
-            open("""spatial_config/configs/$(ratio[1] == ratio[2] ? "square" : "rect")_room_$(accent_wall ? "" : "no_")blue_wall_$(corner_prize ? "corner" : "center")_prize.json""", "w") do f
+            open("""spatial_config/configs/$(ratio[1] == ratio[2] ? "square" : "rect")_room_$(accent_wall ? "" : "no_")blue_wall_$(prize_spec)_prize.json""", "w") do f
                 JSON.print(f, config)
             end
 
@@ -25,11 +25,18 @@ for ratio in dimension_ratios
 end
 
 # generate the spatial language test configuration
-config = Dict()
-config["type"] = "spatial_lang_test"
+for shift in [-2, 0, 2]
+    for left in [true, false]
+        config = Dict()
+        config["type"] = "spatial_lang_test"
+        config["shift"] = shift
+        config["left"] = left
 
-open("""spatial_config/configs/spatial_lang_test.json""", "w") do f
-    JSON.print(f, config)
+        open("""spatial_config/configs/spatial_lang_test_left_$(left)_shift_$(shift).json""", "w") do f
+            JSON.print(f, config)
+        end
+    end
+
 end
 
 # generate the red-green test configurations

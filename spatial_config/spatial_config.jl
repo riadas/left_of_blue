@@ -10,7 +10,7 @@ function define_spatial_reasoning_problem(config)
     if config["type"] == "left_of_blue"
         return define_left_of_blue_problem(config)
     elseif config["type"] == "spatial_lang_test"
-        return define_spatial_lang_problem()
+        return define_spatial_lang_problem(config)
     elseif config["type"] == "red_green_test"
         return define_red_green_problem(config)
     end
@@ -20,7 +20,7 @@ function define_left_of_blue_problem(config)
     l = config["length"]
     w = config["width"]
     accent_wall = config["accent_wall"]
-    corner_prize = config["corner_prize"]
+    prize_spec = config["prize"]
 
     if l == w 
         close_distance = mid 
@@ -43,23 +43,39 @@ function define_left_of_blue_problem(config)
     corner4 = Corner(wall4, wall1)
 
     locations = [wall1, corner1, wall2, corner2, wall3, corner3, wall4, corner4] 
-    prize_location = corner_prize ? corner1 : wall2
+    if prize_spec == "left"
+        prize_location = corner1
+    elseif prize_spec == "right"
+        prize_location = corner2
+    elseif prize_spec == "center"
+        prize_location = wall2
+    elseif prize_spec == "far-right"
+        prize_location = wall3
+    elseif prize_spec == "far-left"
+        prize_location = wall1
+    end
+
     scene = Scene(locations, prize_location)
 
     return scene
 end
 
-function define_spatial_lang_problem()
-    center = Spot(Position(0, 0, 0))
-    spots = [Spot(Position(-1, 0, 0)), 
-             Spot(Position(1, 0, 0)), 
-             Spot(Position(0, 0, -1)), 
-             Spot(Position(0, 0, 1)), 
-             Spot(Position(0, -1, 0)), 
-             Spot(Position(0, 1, 0))]
-    
-    scene = Scene(spots, spots[1])
-    return scene    
+function define_spatial_lang_problem(config)
+    shift = config["shift"]
+    left = config["left"]
+    center = Spot(Position(shift, 0, 0))
+
+    spots = [Spot(Position(shift - 1, 0, 0)), 
+             Spot(Position(shift + 1, 0, 0)), 
+             Spot(Position(shift, 0, -1)), 
+             Spot(Position(shift, 0, 1)), 
+             Spot(Position(shift, -1, 0)), 
+             Spot(Position(shift, 1, 0))]
+    if left 
+        Scene(spots, spots[1])
+    else # right
+        Scene(spots, spots[2])
+    end 
 end
 
 function define_red_green_problem(config)
@@ -99,4 +115,4 @@ function define_red_green_problem(config)
     return scene
 end
 
-scene = define_spatial_reasoning_problem("spatial_config/configs/rect_room_blue_wall_center_prize.json")
+scene = define_spatial_reasoning_problem("spatial_config/configs/rect_room_blue_wall_left_prize.json")
