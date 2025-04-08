@@ -18,7 +18,7 @@ global base_semantics = Dict(
     Wall =>   "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
     Corner => "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
     Spot =>   "genInt genComparison genInt",
-    Whole =>  "genInt genComparison genInt"
+    Half =>  "genInt genComparison genInt"
 )
 
 function update_semantics_cfg(current_semantics_cfg, function_signature::Function)
@@ -150,7 +150,12 @@ end
 
 function update_syntax_cfg(current_syntax_cfg, function_signature::Function)
     first_arg_type = function_signature.arg_types[1]
-    cfg = current_syntax_cfg[first_arg_type]
+    if first_arg_type != Half
+        cfg = current_syntax_cfg[first_arg_type] 
+    else
+        first_arg_type = Whole
+        cfg = current_syntax_cfg[Whole]
+    end
     
     name = function_signature.name 
     arg_types = function_signature.arg_types 
@@ -188,10 +193,15 @@ function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; 
     rand([names..., "Spot(Position(0, 0, 0))"])
 end
 
-function genWhole_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
+function genHalf_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
     idxs = findall(x -> x == Whole, arg_types)
     names = map(i -> arg_names[i], idxs)
-    rand(names)
+    options = []
+    for name in names 
+        push!(options, "$(name).red")
+        push!(options, "$(name).green")
+    end
+    rand(options)
 end
 
 function genComparison_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true)
@@ -245,14 +255,14 @@ function genSpot_semantics(arg_names::Vector{String}, arg_types::Vector{DataType
     rand(map(i -> arg_names[i], idxs))
 end
 
-function genWhole_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    idxs = findall(x -> x == Whole, arg_types)
+function genHalf_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
+    idxs = findall(x -> x == Half, arg_types)
     rand(map(i -> arg_names[i], idxs))
 end
 
 function genInt_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
     type = arg_types[1]
-    if type in [Spot, Whole]
+    if type in [Spot, Half]
         genInt_semantics(rand(arg_names), type)
     end
 end
@@ -263,14 +273,14 @@ function genInt_semantics(arg_name::String, arg_type::DataType)
         for coord in ["x"] # "y", "z"
             push!(choices, "$(arg_name).position.$(coord)")
         end
-    elseif arg_type == Whole
-        push!(choices, ["$(arg_name).green.x", "$(arg_name).red.x"]...)
+    elseif arg_type == Half
+        push!(choices, "$(arg_name).x")
     end
     rand(choices)
 end
 
 function genComparison_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    if arg_types[1] in [Spot, Whole]
+    if arg_types[1] in [Spot, Half]
         rand(["<", ">"])
     else
         "=="
@@ -285,8 +295,7 @@ function format_new_function_string(function_sig)
         typed_arg = "$(arg_name)::$(arg_type)"
         push!(typed_args, typed_arg)
     end
-    """ 
-    function $(function_sig.name)($(join(typed_args, ", ")))::Bool
+    """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
         $(function_sig.definition)
     end
     """

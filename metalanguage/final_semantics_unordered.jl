@@ -96,6 +96,7 @@ function left_of(location_arg::Corner, color_arg::COLOR)::Bool
     location_arg.wall2.color == color_arg
 end
 
+# --- new stage begins ---
 function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
     location2_arg.position.x > location1_arg.position.x
 end

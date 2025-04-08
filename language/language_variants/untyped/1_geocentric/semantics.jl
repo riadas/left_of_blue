@@ -1,6 +1,6 @@
 abstract type Location end
 
-struct Scene
+mutable struct Scene
     locations::Vector{Location}
     prize::Location
 end
@@ -40,6 +40,17 @@ end
 
 struct Spot <: Location
     position::Position
+end
+
+# --- RED/GREEN PROBLEM SPECIFICATION
+struct Half
+    x::Int
+end
+
+struct Whole <: Location
+    green::Half
+    red::Half
+    diagonal::Bool
 end
 
 # --- LIBRARY FUNCTIONS ---

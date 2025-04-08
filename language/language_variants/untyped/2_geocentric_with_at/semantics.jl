@@ -1,6 +1,6 @@
 abstract type Location end
 
-struct Scene
+mutable struct Scene
     locations::Vector{Location}
     prize::Location
 end

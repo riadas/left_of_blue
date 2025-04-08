@@ -67,21 +67,24 @@ function define_red_green_problem(config)
     prize_left_color = config["prize_left_color"]
     order = config["order"]
 
+    match_shift = 2 * (findall(x -> x == "M", order)[1] - 2)
+    reflection_shift = 2 * (findall(x -> x == "R", order)[1] - 2)
+
     match = Whole(
-        Half(prize_left_color == "green" ? -1 : 1), 
-        Half(prize_left_color == "green" ? 1 : -1),
+        Half((prize_left_color == "green" ? -1 : 1) + match_shift), 
+        Half((prize_left_color == "green" ? 1 : -1) + match_shift),
         diagonal 
     )
 
     reflection = Whole(
-        Half(prize_left_color == "green" ? 1 : -1), 
-        Half(prize_left_color == "green" ? -1 : 1),
+        Half((prize_left_color == "green" ? 1 : -1) + reflection_shift), 
+        Half((prize_left_color == "green" ? -1 : 1) + reflection_shift),
         diagonal 
     )
 
     different = Whole(
-        Half(prize_left_color == "green" ? -1 : 1), 
-        Half(prize_left_color == "green" ? 1 : -1),
+        Half(0), 
+        Half(0),
         !diagonal
     )
 

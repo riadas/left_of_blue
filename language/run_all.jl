@@ -1,5 +1,5 @@
 using JSON
-language_variant = "4_egocentric_relative"
+language_variant = "1_geocentric"
 typed = "untyped"
 
 # import syntax, which also imports semantics

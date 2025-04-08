@@ -19,7 +19,7 @@ struct Corner <: Location
     wall2::Wall
 end
 
-struct Scene
+mutable struct Scene
     locations::Vector{Location}
     prize::Location
 end

@@ -1,6 +1,6 @@
 abstract type Location end
 
-struct Scene
+mutable struct Scene
     locations::Vector{Location}
     prize::Location
 end
@@ -70,27 +70,30 @@ end
 
 # --- DEVELOPMENTAL STAGE 1 ---
 # no wall color parameter in spatial memory; purely geometric
- 
 function at(location_arg::Wall, color_arg::COLOR)::Bool
     location_arg.color == color_arg
 end
 
- 
 function my_left(location_arg::Corner, depth_arg::DEPTH)::Bool
     location_arg.wall2.depth == depth_arg
 end
 
- 
 function my_left(location_arg::Spot)::Bool
     location_arg.position.x < 0
 end
 
- 
+function my_left(half_arg::Half)::Bool
+    half_arg.x < 0
+end
+
 function left_of(location_arg::Corner, color_arg::COLOR)::Bool
     at(location_arg.wall2, color_arg)
 end
 
- 
 function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location2_arg.position.x < location1_arg.position.x
+    location2_arg.position.x > location1_arg.position.x
+end
+
+function left_of(half1_arg::Half, half2_arg::Half)::Bool
+    half2_arg.x > half1_arg.x
 end

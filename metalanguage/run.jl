@@ -13,14 +13,18 @@ left_of_function = Function("left_of", ["location_arg", "color_arg"], [Corner, C
 my_left_function_spot = Function("my_left", ["location_arg"], [Spot], "")
 left_of_function_spot = Function("left_of", ["location1_arg", "location2_arg"], [Spot, Spot], "")
 
-my_left_function_whole = Function("my_left", ["location_arg"], [Whole], "")
-left_of_function_whole = Function("left_of", ["location1_arg"], [Whole], "")
+my_left_function_whole = Function("my_left", ["half_arg"], [Half], "")
+left_of_function_whole = Function("left_of", ["half1_arg", "half2_arg"], [Half, Half], "")
 
 ordered_function_sigs = [at_function, 
                          my_left_function, 
                          my_left_function_spot, 
+                         my_left_function_whole,
                          left_of_function, 
-                         left_of_function_spot] # , left_of_function
+                         left_of_function_spot,
+                         left_of_function_whole] # , left_of_function
+
+# ordered_function_sigs = [my_left_function_whole, left_of_function_whole]
 
 synthesized_semantics = []
 for function_sig in ordered_function_sigs
@@ -83,14 +87,14 @@ for function_sig in ordered_function_sigs
                 programs = unique(programs)
 
                 # exclude programs that don't include the input argument
-                println(programs)
+                # println(programs)
                 programs = filter(x -> x == "true" || occursin("location", x), programs)
-                println(programs)
+                # println(programs)
 
                 # evaluate all the possible spatial memory representations and select the best one
                 formatted_programs = []
                 for program in programs
-                    println(program) 
+                    # println(program) 
                     if scene.prize isa Wall 
                         program = "location isa Wall && $(program)"
                     elseif scene.prize isa Corner
@@ -104,22 +108,69 @@ for function_sig in ordered_function_sigs
                 results = []
                 for i in 1:length(evaluated_lambdas)
                     x = evaluated_lambdas[i]
-                    println(formatted_programs[i])
-                    push!(results, filter(x, scene.locations))
+                    # println(formatted_programs[i])
+
+                    if !(scene.prize isa Whole)
+                        push!(results, filter(x, scene.locations))
+                    else
+                        shift = (scene.prize.red.x + scene.prize.green.x)/2
+                        shifted_prize = Whole(Half(scene.prize.green.x - shift), Half(scene.prize.red.x + shift), scene.prize.diagonal)
+                        new_locations = [shifted_prize]
+                        res = filter(x, new_locations)
+
+                        final_res = nothing
+                        if res == [] 
+                            final_res = nothing
+                        else
+                            final_res = filter(x, scene.locations)
+                        end
+
+                        push!(results, final_res)
+                    end
+
                 end
 
-                programs_and_results = [zip(programs, results)...]
-                programs_and_results = filter(tup -> scene.prize in tup[2], programs_and_results)
+                if scene.prize isa Whole 
+                    idxs = findall(x -> !isnothing(x), results)
+                    programs = map(i -> programs[i], idxs)
+                    results = map(i -> results[i], idxs)
 
-                best_indices = findall(t -> length(t[2]) == minimum(map(tup -> length(tup[2]), programs_and_results)), programs_and_results)
-                best_programs = map(i -> programs_and_results[i], best_indices)
-                println(best_programs)
-                sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
-                best_program, locations_to_search = best_programs[1]
-                println(best_program)
-                println(locations_to_search)
+                    # println("programs")
+                    # println(programs)
+                    # println("results")
+                    # println(results)
 
-                scores[config_name] = 1/length(locations_to_search)
+                    if results == []
+                        scores[config_name] = 1/3
+                    else
+                        programs_and_results = sort([zip(programs, results)...], by=tup -> length(tup[1]))
+                        program, res = programs_and_results[end]
+                        # println(program)
+                        # println(res)
+                        if scene.prize in res 
+                            scores[config_name] = 1/length(res)
+                        elseif length(res) == []
+                            scores[config_name] = 1/3
+                        else
+                            scores[config_name] = 0
+                        end 
+                    end
+
+                else
+                    programs_and_results = [zip(programs, results)...]
+                    programs_and_results = filter(tup -> scene.prize in tup[2], programs_and_results)
+    
+                    best_indices = findall(t -> length(t[2]) == minimum(map(tup -> length(tup[2]), programs_and_results)), programs_and_results)
+                    best_programs = map(i -> programs_and_results[i], best_indices)
+                    # println(best_programs)
+                    sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
+                    best_program, locations_to_search = best_programs[1]
+                    # println(best_program)
+                    # println(locations_to_search)
+    
+                    scores[config_name] = 1/length(locations_to_search)
+                end
+
             end
         end
 
@@ -141,11 +192,14 @@ for function_sig in ordered_function_sigs
             best_definition = definition
             best_total_score = total_score
             best_full_results = scores
+            println("new best!")
+            println(definition)
+            println(total_score)
         end 
 
     end
 
-    println(best_full_results)
+    # println(best_full_results)
 
     # update final semantics and syntax with new function definition
     function_sig.definition = best_definition
