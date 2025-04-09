@@ -19,7 +19,7 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
     l = config["length"]
     w = config["width"]
     accent_wall = config["accent_wall"]
-    corner_prize = config["corner_prize"]
+    prize_location = config["prize"]
 
     smaller_dim = min(l, w)
     larger_dim = max(l, w)
@@ -44,10 +44,16 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
 
     # add prize location
     offset = accent_width * 4
-    if corner_prize 
+    if prize_location == "left" 
         location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + scaled_l - offset]
-    else
+    elseif prize_location == "center"
         location = [2.5, (5-scaled_l)/2 + scaled_l - offset]
+    elseif prize_location == "right"
+        location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + scaled_l - offset]
+    elseif prize_location == "far-left"
+        location = [(5 - scaled_w)/2 + offset, 2.5]
+    elseif prize_location == "far-right"
+        location = [(5 - scaled_w)/2 + scaled_w - offset, 2.5]
     end
     scatter!(location[1:1], location[2:2], markershape=:star5, markersize=7, markercolor="red", markerstrokecolor="red")
 
@@ -77,7 +83,7 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
     l = config["length"]
     w = config["width"]
     accent_wall = config["accent_wall"]
-    corner_prize = config["corner_prize"]
+    prize_location = config["prize"]
 
     smaller_dim = min(l, w)
     larger_dim = max(l, w)
@@ -115,20 +121,37 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
 
     elseif length(locations_to_search) == 1 
         location = locations_to_search[1]
+        label = "1.0"
         if location isa Wall 
             # plot at center of blue wall
-            label_x = 2.5
-            label_y = (5-scaled_l)/2 + scaled_l - offset * 2
-            label = "1.0"
-            # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
-            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            if location.color == blue 
+                label_x = 2.5
+                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
+                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
+                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            elseif prize_location == "far-left"
+                label_x = (5 - scaled_w)/2 + offset * 2 
+                label_y = 2.5
+                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            elseif prize_location == "far-right"
+                label_x = (5 - scaled_w)/2 + scaled_w - offset * 2 
+                label_y = 2.5
+                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            end
         else
-            # plot at corner of blue wall
-            label_x = (5 - scaled_w)/2 + offset * 2
-            label_y = (5-scaled_l)/2 + scaled_l - offset * 2
-            label = "1.0"
-            # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
-            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            if prize_location == "left"
+                # plot at corner of blue wall
+                label_x = (5 - scaled_w)/2 + offset * 2
+                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
+                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
+                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            elseif prize_location == "right"
+                # plot at corner of blue wall
+                label_x = (5 - scaled_w)/2 + scaled_w + offset * 2
+                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
+                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
+                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+            end
         end
 
     elseif length(locations_to_search) == 2 
@@ -143,6 +166,34 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
                 ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
             ]
         end
+
+        if prize_location == "left"
+            positions = [
+                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
+            ]
+        elseif prize_location == "right"
+            positions = [
+                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + offset * 2),
+                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+            ]
+        elseif prize_location == "center"
+            positions = [
+                (2.5, (5-scaled_l)/2 + scaled_l - offset * 2),
+                (2.5, (5-scaled_l)/2 + offset * 2),
+            ]
+        elseif prize_location == "far-left"
+            positions = [
+                ((5-scaled_w)/2 + offset * 2, 2.5),
+                ((5-scaled_w)/2 + offset * 2 + scaled_w, 2.5),
+            ]
+        elseif prize_location == "far-right"
+            positions = [
+                ((5-scaled_w)/2 + offset * 2, 2.5),
+                ((5-scaled_w)/2 + offset * 2 + scaled_w, 2.5),
+            ]
+        end
+
         labels = ["0.5", "0.5"]
         for i in 1:length(labels)
             label = labels[i]
