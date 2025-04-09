@@ -230,3 +230,107 @@ function visualize_spatial_lang_results(config, locations_to_search, save_filepa
 
     return p
 end
+
+function diagonal_to_top_right(p, color1=:green, color2=:firebrick, shift=(0, 0))
+    if p == "" # p == ""
+        p = plot(0:5,0:5, linecolor="white")
+    end
+    shift_x, shift_y = shift
+    x = collect(range(2 + shift_x, 3 + shift_x, length= 100))
+    y1 = x .- shift_x .+ shift_y
+    y2 = collect(range(3 + shift_y, 3 + shift_y, length=100))
+    y3 = collect(range(2 + shift_y, 2 + shift_y, length=100))
+    
+    p = plot!(p, x,  y1, fillrange = y2, fillalpha = 1, c = color2, grid=false, axis=([], false), legend=false, size=(400, 400))
+    p = plot!(p, x, y3, fillrange = y1, fillalpha = 1, c = color1, grid=false, axis=([], false), legend=false, size=(400, 400))    
+    return p
+end
+
+function diagonal_to_top_left(p, color1=:green, color2=:firebrick, shift=(0, 0))
+    if p == ""
+        p = plot(0:5,0:5, linecolor="white")
+    end
+    shift_x, shift_y = shift
+    x = collect(range(2 + shift_x, 3 + shift_x, length= 100))
+    y1 = 5 .- (x .-shift_x) .+ shift_y
+    y2 = collect(range(3 + shift_y, 3 + shift_y, length=100))
+    y3 = collect(range(2 + shift_y, 2 + shift_y, length=100))
+    
+    p = plot!(p, x, y1, fillrange = y2, fillalpha = 1, c = color2, grid=false, axis=([], false), legend=false, size=(400, 400))
+    p = plot!(p, x, y3, fillrange = y1, fillalpha = 1, c = color1, grid=false, axis=([], false), legend=false, size=(400, 400))    
+    return p
+end
+
+function vertical(p, color1=:green, color2=:firebrick, shift=(0, 0))
+    if p == "" # p == ""
+        p = plot(0:5,0:5, linecolor="white")
+    end
+    shift_x, shift_y = shift
+
+    # draw rectangle
+    width = 0.5
+    height = 1
+    rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+    plot!(rectangle(0.5, 1, 2 + shift_x, 2 + shift_y), opacity=1, grid=false, axis=([], false), legend=false, size=(400, 400), c=color1, linecolor=color1)
+    plot!(rectangle(0.5, 1, 2.5 + shift_x, 2 + shift_y), opacity=1, grid=false, axis=([], false), legend=false, size=(400, 400), c=color2, linecolor=color2)
+
+    return p
+end
+
+
+function visualize_red_green_problem(config, save_filepath="")
+    prize_left_color = config["prize_left_color"]
+    diagonal = config["diagonal"] 
+    order = config["order"]
+    diagonal_type = config["diagonal_type"]
+
+    if prize_left_color == "green"
+        color1 = :green 
+        color2 = :firebrick 
+    else
+        color1 = :firebrick 
+        color2 = :green
+    end
+
+    p = ""
+    diagonal_func = diagonal_type == "tl" ? diagonal_to_top_left : diagonal_to_top_right
+    if diagonal 
+        # plot match 
+        p = diagonal_func(p, color1, color2, (0, 1))
+        
+        shift = 2 * (findall(x -> x == "M", order)[1] - 2)
+        p = diagonal_func(p, color1, color2, (shift, -1))
+
+        # plot reflection
+        shift = 2 * (findall(x -> x == "R", order)[1] - 2)
+        p = diagonal_func(p, color2, color1, (shift, -1))
+
+        # plot different
+        shift = 2 * (findall(x -> x == "D", order)[1] - 2)
+        p = vertical(p, color1, color2, (shift, -1))
+    else
+        # plot match 
+        p = vertical(p, color1, color2, (0, 1))
+        
+        shift = 2 * (findall(x -> x == "M", order)[1] - 2)
+        p = vertical(p, color1, color2, (shift, -1))
+
+        # plot reflection
+        shift = 2 * (findall(x -> x == "R", order)[1] - 2)
+        p = vertical(p, color2, color1, (shift, -1))
+
+        # plot different
+        shift = 2 * (findall(x -> x == "D", order)[1] - 2)
+        p = diagonal_func(p, color1, color2, (shift, -1))
+    end
+
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
+    return p
+end
+
+function visualize_red_green_results(config, save_filepath="")
+
+end

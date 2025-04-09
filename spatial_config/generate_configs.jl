@@ -43,18 +43,22 @@ end
 prize_left_colors = ["green", "red"]
 diagonals = [false, true]
 orders = [permutations(["M", "R", "D"])...]
+diagonal_types = ["tl"] # ["tl", "tr"]
 
 for prize_left_color in prize_left_colors 
     for diagonal in diagonals 
         for order in orders
-            config = Dict()
-            config["type"] = "red_green_test"
-            config["prize_left_color"] = prize_left_color
-            config["diagonal"] = diagonal 
-            config["order"] = order 
-
-            open("""spatial_config/configs/green_red_test_left_color_$(prize_left_color)_diagonal_$(diagonal)_order_$(join(order, "_")).json""", "w") do f
-                JSON.print(f, config)
+            for diagonal_type in diagonal_types 
+                config = Dict()
+                config["type"] = "red_green_test"
+                config["prize_left_color"] = prize_left_color
+                config["diagonal"] = diagonal 
+                config["order"] = order
+                config["diagonal_type"] = diagonal_type
+    
+                open("""spatial_config/configs/green_red_test_left_color_$(prize_left_color)_diagonal_$(diagonal)_order_$(join(order, "_")).json""", "w") do f
+                    JSON.print(f, config)
+                end
             end
         end
     end
