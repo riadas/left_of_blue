@@ -16,19 +16,47 @@ left_of_function_spot = Function("left_of", ["location1_arg", "location2_arg"], 
 my_left_function_whole = Function("my_left", ["half_arg"], [Half], "")
 left_of_function_whole = Function("left_of", ["half1_arg", "half2_arg"], [Half, Half], "")
 
-function_sigs = [at_function, 
-                 my_left_function, 
-                 my_left_function_spot, 
-                 my_left_function_whole,
-                 left_of_function, 
-                 left_of_function_spot,
-                 left_of_function_whole]
+my_right_function = Function("my_right", ["location_arg", "depth_arg"], [Corner, DEPTH], "")
+right_of_function = Function("right_of", ["location_arg", "color_arg"], [Corner, COLOR], "")
+
+my_right_function_spot = Function("my_right", ["location_arg"], [Spot], "")
+right_of_function_spot = Function("right_of", ["location1_arg", "location2_arg"], [Spot, Spot], "")
+
+my_right_function_whole = Function("my_right", ["half_arg"], [Half], "")
+right_of_function_whole = Function("right_of", ["half1_arg", "half2_arg"], [Half, Half], "")
+
+left_of_function_wall = Function("left_of", ["location_arg", "color_arg"], [Wall, COLOR], "")
+right_of_function_wall = Function("right_of", ["location_arg", "color_arg"], [Wall, COLOR], "")
+
+function_sigs = [
+                    at_function, 
+                    my_left_function,
+                    my_right_function,
+                    my_left_function_spot,
+                    my_right_function_spot, 
+                    my_left_function_whole,
+                    my_right_function_whole,
+                    left_of_function, 
+                    right_of_function,
+                    left_of_function_spot,
+                    right_of_function_spot,
+                    left_of_function_whole,
+                    right_of_function_whole,
+                    left_of_function_wall,
+                    right_of_function_wall
+                ] 
 
 sig_keys = map(sig -> split(format_new_function_string(sig), "\n")[1], function_sigs)
 sig_dict = Dict(zip(sig_keys, function_sigs))
+failed_AST_sizes = Dict(map(k -> k => [], sig_keys))
 
-synthesized_semantics = []
+categories = [[Wall, Corner, DEPTH, COLOR], [Spot], [Half, Whole]]
+synthesized_semantics = Dict(map(x -> x => [], 1:length(categories)))
+prev_best_scores = Dict(map(x -> x => -1.0, 1:length(categories)))
 while length(sig_dict) != 0
+    println("START OF LOOP")
+    println(length(sig_dict))
+
     sig_semantics = Dict()
     sig_AST_sizes = Dict()
     sig_keys = [keys(sig_dict)...]
@@ -36,6 +64,7 @@ while length(sig_dict) != 0
 
     for i in 1:length(function_sigs)
         function_sig = function_sigs[i]
+        category_assignment = findall(c -> intersect(function_sig.arg_types, c) != [], categories)[1]
         sig_key = sig_keys[i]
 
         possible_semantics = []
@@ -46,7 +75,7 @@ while length(sig_dict) != 0
         possible_semantics = unique(possible_semantics)
 
         # exclude function definitions that have been used before
-        possible_semantics = filter(x -> !(x in synthesized_semantics), possible_semantics)
+        possible_semantics = filter(x -> !(x in synthesized_semantics[category_assignment]), possible_semantics)
 
         # exclude function definitions that don't use all of the input arguments
         possible_semantics = filter(x -> foldl(&, map(a -> occursin(a, x), function_sig.arg_names), init=true), possible_semantics)
@@ -54,19 +83,31 @@ while length(sig_dict) != 0
         possible_semantics = sort(possible_semantics)
 
         sig_semantics[sig_key] = possible_semantics
-        sig_AST_sizes[sig_key] = unique(map(s -> size(Meta.parse(s)), possible_semantics))
+        sig_AST_sizes[sig_key] = filter(x -> !(x in failed_AST_sizes[sig_key]), unique(map(s -> size(Meta.parse(s)), possible_semantics)))
+    end
+
+    for sig_key in keys(sig_AST_sizes)
+        if sig_AST_sizes[sig_key] == []
+            delete!(sig_dict, sig_key)
+            delete!(sig_AST_sizes, sig_key)
+        end
     end
 
     all_AST_sizes = unique(vcat([values(sig_AST_sizes)...]...))
 
     min_AST_size = minimum(all_AST_sizes)
 
-    sig_keys_with_min = filter(k -> min_AST_size in sig_AST_sizes[k], sig_keys)
+    sig_keys_with_min = sort(filter(k -> min_AST_size in sig_AST_sizes[k], sig_keys))
+    println("sig_keys_with_min")
+    for k in sig_keys_with_min 
+        println(k)
+    end
 
     level_best_info = Dict()
     old_base_syntax = deepcopy(base_syntax)
     for sig_key in sig_keys_with_min 
         function_sig = sig_dict[sig_key]
+        category_assignment = findall(c -> intersect(function_sig.arg_types, c) != [], categories)[1]
         level_definitions = filter(d -> size(Meta.parse(d)) == min_AST_size, sig_semantics[sig_key])
 
         global base_syntax = old_base_syntax 
@@ -92,8 +133,17 @@ while length(sig_dict) != 0
             # generate lots of programs in the new language, and measure performance across suite of spatial configurations
             # if performance is higher than base language, save that program and its score
 
+            config_names = readdir("spatial_config/configs")
+            if category_assignment == 1 # LoB experiments
+                config_names = filter(x -> occursin("room", x), config_names)
+            elseif category_assignment == 2 # spatial lang. experiments
+                config_names = filter(x -> occursin("spatial", x), config_names)
+            elseif category_assignment == 3 # red-green experiments
+                config_names = filter(x -> occursin("green", x), config_names)
+            end
+
             scores = Dict()
-            for config_name in readdir("spatial_config/configs")
+            for config_name in config_names
                 # all non-control input spatial problems
                 if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name)
                     config_filepath = "spatial_config/configs/$(config_name)"
@@ -142,8 +192,8 @@ while length(sig_dict) != 0
                         if !(scene.prize isa Whole)
                             push!(results, filter(x, scene.locations))
                         else
-                            shift = (scene.prize.red.x + scene.prize.green.x)/2
-                            shifted_prize = Whole(Half(scene.prize.green.x - shift), Half(scene.prize.red.x + shift), scene.prize.diagonal)
+                            shift = (scene.prize.coral.x + scene.prize.green.x)/2
+                            shifted_prize = Whole(Half(scene.prize.green.x - shift), Half(scene.prize.coral.x - shift), scene.prize.diagonal)
                             new_locations = [shifted_prize]
                             res = filter(x, new_locations)
     
@@ -204,31 +254,44 @@ while length(sig_dict) != 0
 
             total_score = sum([values(scores)...])
             update_best = false
-            if total_score > best_total_score
-                update_best = true
-            elseif total_score == best_total_score 
-                if size(Meta.parse(best_definition)) > size(Meta.parse(definition)) 
+            if !(definition in map(x -> x[1], [values(level_best_info)...]))
+                if total_score > best_total_score
                     update_best = true
-                elseif size(Meta.parse(best_definition)) == size(Meta.parse(definition)) && length(best_definition) > length(definition)
-                    update_best = true 
-                elseif length(best_definition) == length(definition) && best_definition < definition
-                    update_best = true
+                elseif total_score == best_total_score 
+                    if size(Meta.parse(best_definition)) > size(Meta.parse(definition)) 
+                        update_best = true
+                    elseif size(Meta.parse(best_definition)) == size(Meta.parse(definition)) && length(best_definition) > length(definition)
+                        update_best = true 
+                    elseif length(best_definition) == length(definition) && best_definition < definition
+                        update_best = true
+                    end
                 end
-            end
-
-            if update_best 
-                println("new_best!")
-                println(definition)
-                best_definition = definition
-                best_total_score = total_score
-                best_full_results = scores
+    
+                if update_best 
+                    println("new_best!")
+                    println(definition)
+                    best_definition = definition
+                    best_total_score = total_score
+                    best_full_results = scores
+                end
             end 
 
         end
-        level_best_info[sig_key] = (best_definition, best_total_score, best_full_results)
+        if best_total_score > prev_best_scores[category_assignment]
+            prev_best_scores[category_assignment] = best_total_score
+            level_best_info[sig_key] = (best_definition, best_total_score, best_full_results)
+        else
+            # TODO: figure out how to properly handle prev_best_scores in the unordered case
+            other_AST_sizes = filter(x -> x != min_AST_size, sig_AST_sizes[sig_key])
+            if other_AST_sizes == []
+                delete!(sig_dict, sig_key)
+            else
+                push!(failed_AST_sizes[sig_key], min_AST_size)
+            end
+            sig_keys_with_min = filter(x -> x != sig_key, sig_keys_with_min)
+        end
     end
 
-    categories = [[Wall, Corner], [Spot], [Half]]
     category_assignments = Dict(map(k -> k => findall(c -> intersect(sig_dict[k].arg_types, c) != [], categories)[1], sig_keys_with_min))
 
     conflicts = []
@@ -248,9 +311,10 @@ while length(sig_dict) != 0
     end
 
     global base_syntax = deepcopy(old_base_syntax)
-    all = sort([non_conflicting..., vcat(conflicts...)...], by=x -> findall(y -> occursin(y, x), ["at(", "my_left(", "left_of("])[1])
+    all = sort([non_conflicting..., vcat(conflicts...)...], by=x -> findall(y -> occursin(y, x), ["at(", "my_left(", "my_right(", "left_of(", "right_of("])[1])
     for k in all # non_conflicting 
         function_sig = sig_dict[k]
+        category_assignment = findall(c -> intersect(function_sig.arg_types, c) != [], categories)[1]
         best_definition = level_best_info[k][1]
         # update final semantics and syntax with new function definition
         function_sig.definition = best_definition
@@ -258,7 +322,7 @@ while length(sig_dict) != 0
         println("new function definition")
         println(new_function_definition_str)
         
-        push!(synthesized_semantics, best_definition)
+        push!(synthesized_semantics[category_assignment], best_definition)
 
         global base_semantics_str = join([base_semantics_str, new_function_definition_str], "\n")
 
@@ -267,7 +331,7 @@ while length(sig_dict) != 0
         end
 
         # update semantics cfg 
-        # global base_semantics = update_semantics_cfg(base_semantics, function_sig)
+        global base_semantics = update_semantics_cfg(base_semantics, function_sig)
 
         # update syntax cfg 
         global base_syntax = update_syntax_cfg(base_syntax, function_sig)

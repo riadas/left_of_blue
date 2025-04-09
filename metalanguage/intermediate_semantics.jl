@@ -49,7 +49,7 @@ end
 
 struct Whole <: Location
     green::Half
-    red::Half
+    coral::Half
     diagonal::Bool
 end
 
@@ -76,26 +76,36 @@ function at(location_arg::Wall, color_arg::COLOR)::Bool
 end
 
 function my_left(half_arg::Half)::Bool
-    half_arg.x < 0
+    half_arg.x > 0
 end
 
 # --- new stage begins ---
-function my_left(location_arg::Spot)::Bool
-    location_arg.position.x < 0
+# --- new stage begins ---
+# --- new stage begins ---
+function left_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall1, color_arg)
 end
 
-function my_left(location_arg::Corner, depth_arg::DEPTH)::Bool
-    location_arg.wall2.depth == depth_arg
+# --- new stage begins ---
+# --- new stage begins ---
+function my_left(location_arg::Spot)::Bool
+    location_arg.position.x < 0
 end
 
 function left_of(half1_arg::Half, half2_arg::Half)::Bool
     half2_arg.x > half1_arg.x
 end
 
-function left_of(location_arg::Corner, color_arg::COLOR)::Bool
-    location_arg.wall2.color == color_arg
+function left_of(location_arg::Wall, color_arg::COLOR)::Bool
+    left_of(prev(location_arg, locations), color_arg)
 end
 
-function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
+# --- new stage begins ---
+# --- new stage begins ---
+function right_of(location_arg::Wall, color_arg::COLOR)::Bool
+    at(next(location_arg, locations).wall2, color_arg)
+end
+
+function right_of(location1_arg::Spot, location2_arg::Spot)::Bool
     location2_arg.position.z > location1_arg.position.z
 end
