@@ -1,4 +1,5 @@
 using JSON, Plots
+include("spatial_config.jl")
 
 function visualize_spatial_reasoning_problem(filepath::String, display2D=true)
     config = JSON.parsefile(filepath)
@@ -9,7 +10,7 @@ function visualize_spatial_reasoning_problem(config, display2D=true)
     if config["type"] == "left_of_blue"
         return visualize_left_of_blue_problem(config, display2D)
     elseif config["type"] == "spatial_lang_test"
-        return visualize_spatial_lang_problem()
+        return visualize_spatial_lang_problem(config)
     end
 end
 
@@ -158,30 +159,29 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
     return p
 end
 
-function visualize_spatial_lang_problem(save_filepath="")
-    function plot_cube(p, center_shift, col=nothing)
+function visualize_spatial_lang_problem(config, save_filepath="")
+    function plot_cube(p, center_shift, config_shift, col=nothing)
         println(p)
         println(center_shift)
         println(col)
-        xp = [0, 0, 0, 0, 1, 1, 1, 1] .+ center_shift[1]
+        xp = [0, 0, 0, 0, 1, 1, 1, 1] .+ center_shift[1] .+ config_shift
         yp = [0, 1, 0, 1, 0, 0, 1, 1] .+ center_shift[2]
         zp = [0, 0, 1, 1, 1, 0, 0, 1] .+ center_shift[3]
     
         connections = [(1,2,3), (4,2,3), (4,7,8), (7,5,6), (2,4,7), (1,6,2), (2,7,6), (7,8,5), (4,8,5), (4,5,3), (1,6,3), (6,3,5)]
     
-        xe = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0] .+ center_shift[1]
+        xe = [0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0] .+ center_shift[1] .+config_shift
         ye = [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 1] .+ center_shift[2]
         ze = [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1] .+ center_shift[3]
         
         if p == ""
-            println("hello")
-            p = plot(xe,ye,ze; lc=:black, lw=0.5, lims=(-0.25,3.25), grid=false, axis=([], false), legend=false)
+            p = plot(xe,ye,ze; lc=:black, lw=0.5, lims=(-2,5), grid=false, axis=([], false), legend=false)
         else
-            p = plot!(p, xe,ye,ze; lc=:black, lw=0.5, lims=(-0.25,3.25), grid=false, axis=([], false), legend=false)
+            p = plot!(p, xe,ye,ze; lc=:black, lw=0.5, lims=(-2,5), grid=false, axis=([], false), legend=false)
         end
         
         if !isnothing(col)
-            p = scatter!(p, (0.5,0.5,0.5) .+ center_shift; c=col, ms=6, msw=0.1, grid=false, axis=([], false), legend=false)
+            p = scatter!(p, (0.5,0.5,0.5) .+ center_shift .+ (config_shift, 0, 0); c=col, ms=6, msw=0.1, grid=false, axis=([], false), legend=false)
             p = mesh3d!(xp,yp,zp; connections, proj_type=:persp, fc=col, lc=:black, fa=0.1, lw=0, grid=false, axis=([], false), legend=false)
         end
         # if !isnothing(col)
@@ -189,20 +189,43 @@ function visualize_spatial_lang_problem(save_filepath="")
         # end
         return p
     end
+
+    prize_location = config["left"] ? (0, 1, 1) : (2, 1, 1) # handle prize being on the left versus right side
+    config_shift = config["shift"]
     
-    p = plot_cube("", (1, 1, 1), :red)
+    p = plot_cube("", (1, 1, 1), config_shift, :red)
     
+
     for x in 0:2 
         for y in 0:2 
             for z in 0:2 
-                if (x, y, z) in [(2, 1, 1), (1, 2, 1), (1, 1, 2), (0, 1, 1), (1, 0, 1), (1, 1, 0)]
-                    p = plot_cube(p, (x, y, z), :blue)
-                else 
+                if (x, y, z) in [(2, 1, 1), (1, 2, 1), (1, 1, 2), (1, 0, 1), (1, 1, 0), (0, 1, 1)]
+                    p = plot_cube(p, (x, y, z), config_shift, :blue)
+                end
+                if (x, y, z) in [prize_location] # override previous blue marking if prize location
+                    p = plot_cube(p, (x, y, z), config_shift, :green)
                     # p = plot_cube(p, (x, y, z))
                 end
             end
         end
     end
+
+    p = scatter!(p, (1.5, -2, 1.5); c=:purple, ms=6, msw=0.1, grid=false, axis=([], false), legend=false)
+    xs = collect(range(1.5, 1.5, length=100))
+    ys = collect(range(-2, 1.5, length=100))
+    zs = collect(range(1.5, 1.5, length=100))
+    p = plot!(xs, ys, zs, linecolor="purple", grid=false, axis=([], false), legend=false, size=(600, 600), arrow=arrow())
+    # p = quiver!([xs[1]], [ys[1]], [zs[1]], quiver=([xs[end] - xs[1]], [ys[end] - ys[1]], [zs[end] - zs[1]]), lc=:purple, la=0.8)
+
+    xs = collect(range(1.5, -0.5, length=100))
+    ys = collect(range(-2, 1.5, length=100))
+    zs = collect(range(1.5, 1.5, length=100))
+    p = plot!(xs, ys, zs, linecolor="purple", grid=false, axis=([], false), legend=false, size=(600, 600), arrow=true)
+
+    xs = collect(range(1.5, 3.5, length=100))
+    ys = collect(range(-2, 1.5, length=100))
+    zs = collect(range(1.5, 1.5, length=100))
+    p = plot!(xs, ys, zs, linecolor="purple", grid=false, axis=([], false), legend=false, size=(600, 600), arrow=true)
 
     if save_filepath != ""
         savefig(save_filepath)
@@ -212,13 +235,13 @@ function visualize_spatial_lang_problem(save_filepath="")
 end
 
 function visualize_spatial_lang_results(config, locations_to_search, save_filepath="")
-    p = visualize_spatial_lang_problem()
-
+    p = visualize_spatial_lang_problem(config)
+    config_shift = (config["shift"], 0, 0)
     # add labeled points
     label = "$(round(1/length(locations_to_search), digits=2))"
 
     for spot in locations_to_search 
-        center_shift = (spot.position.x, spot.position.y, spot.position.z) .* 1.5 .+ (1, 1, 1)
+        center_shift = ((spot.position.x, spot.position.y, spot.position.z) .- config_shift) .* 1.3 .+ (spot.position.x, spot.position.y, spot.position.z) .+ (1, 1, 1)
         final_position = (0.5,0.5,0.5) .+ center_shift
         # p = scatter!(p, final_position; c=:blue, ms=6, msw=0.1, grid=false, axis=([], false), legend=false)
         p = annotate!.(final_position[1], final_position[2], final_position[3], text.(label, :black, 10) )
@@ -331,6 +354,29 @@ function visualize_red_green_problem(config, save_filepath="")
     return p
 end
 
-function visualize_red_green_results(config, save_filepath="")
+function visualize_red_green_results(config, locations_to_search, save_filepath="")
+    p = visualize_red_green_problem(config, "")
 
+    scene = define_red_green_problem(config)
+    
+    left_position = (0.5, 0.8)
+    center_position = (2.5, 0.8)
+    right_position = (4.5, 0.8)
+    
+    label_positions = [left_position, center_position, right_position]
+
+    if locations_to_search == []
+        for label_pos in label_positions 
+            p = annotate!.(label_pos[1], label_pos[2], text.("1/3", :black, 10) )
+        end
+    else
+        label = "1/$(length(locations_to_search))"
+        for location in locations_to_search
+            idx = findall(l -> l == location, scene.locations)[1]
+            label_pos = label_positions[idx]
+            p = annotate!.(label_pos[1], label_pos[2], text.(label, :black, 10) )
+        end
+    end
+
+    return p
 end

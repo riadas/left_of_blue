@@ -115,4 +115,4 @@ function define_red_green_problem(config)
     return scene
 end
 
-scene = define_spatial_reasoning_problem("spatial_config/configs/rect_room_blue_wall_left_prize.json")
+# scene = define_spatial_reasoning_problem("spatial_config/configs/rect_room_blue_wall_left_prize.json")
