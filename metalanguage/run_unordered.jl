@@ -130,10 +130,10 @@ while length(sig_dict) != 0
 
             # update semantics.jl file with new function and import file
             new_semantics_str = join([level_base_semantics_str, new_function_definition_str], "\n")
-            open("metalanguage/intermediate_semantics_unordered.jl", "w+") do f 
+            open("metalanguage/intermediate_outputs/intermediate_semantics_unordered.jl", "w+") do f 
                 write(f, new_semantics_str)
             end
-            include("intermediate_semantics_unordered.jl")
+            include("intermediate_outputs/intermediate_semantics_unordered.jl")
 
             # generate lots of programs in the new language, and measure performance across suite of spatial configurations
             # if performance is higher than base language, save that program and its score
