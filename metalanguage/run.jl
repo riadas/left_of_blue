@@ -22,6 +22,7 @@ mkdir(split_results_dir)
 for category_name in category_names 
     mkdir("$(split_results_dir)/$(category_name)")
 end
+combined_to_split_mapping = []
 
 at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
 my_left_function = Function("my_left", ["location_arg", "depth_arg"], [Corner, DEPTH], "")
@@ -94,7 +95,6 @@ for function_index in 1:length(ordered_function_sigs)
     best_total_score = -1
     best_full_results = nothing
     best_locations_to_search = Dict()
-    combined_to_split_mapping = []
 
     for definition in possible_semantics 
         function_sig.definition = definition

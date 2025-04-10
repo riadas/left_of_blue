@@ -434,5 +434,9 @@ function visualize_red_green_results(config, locations_to_search, save_filepath=
         end
     end
 
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
     return p
 end

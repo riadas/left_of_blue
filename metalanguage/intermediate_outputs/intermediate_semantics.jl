@@ -83,7 +83,7 @@ function my_right(location_arg::Spot)::Bool
 end
 
 function my_left(half_arg::Half)::Bool
-    half_arg.x > 0
+    half_arg.x < 0
 end
 
 function left_of(location_arg::Corner, color_arg::COLOR)::Bool
