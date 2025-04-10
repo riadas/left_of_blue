@@ -77,7 +77,11 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
     return p
 end
 
-function visualize_left_of_blue_results(config, scene, locations_to_search, save_filepath="")
+function visualize_left_of_blue_results(config, locations_to_search, save_filepath="")
+    println("visualize_left_of_blue_results")
+    println(config)
+    println(locations_to_search)
+    println(save_filepath)
     p = visualize_left_of_blue_problem(config, "")
 
     l = config["length"]
@@ -130,11 +134,11 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
                 # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
                 p = annotate!.(label_x, label_y, text.(label, :green, 10) )
             elseif prize_location == "far-left"
-                label_x = (5 - scaled_w)/2 + offset * 2 
+                label_x = (5 - scaled_w)/2 + offset * 3 
                 label_y = 2.5
                 p = annotate!.(label_x, label_y, text.(label, :green, 10) )
             elseif prize_location == "far-right"
-                label_x = (5 - scaled_w)/2 + scaled_w - offset * 2 
+                label_x = (5 - scaled_w)/2 + scaled_w - offset * 3 
                 label_y = 2.5
                 p = annotate!.(label_x, label_y, text.(label, :green, 10) )
             end
@@ -154,19 +158,20 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
             end
         end
 
-    elseif length(locations_to_search) == 2 
-        if locations_to_search[1] isa Wall 
-            positions = [
-                (2.5, (5-scaled_l)/2 + scaled_l - offset * 2),
-                (2.5, (5-scaled_l)/2 + offset * 2),
-            ]
-        else
-            positions = [
-                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
-            ]
+    elseif length(locations_to_search) == 3
+        positions = [
+            ((5-scaled_w)/2 + offset * 3, 2.5),
+            ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
+            (2.5, (5-scaled_l)/2 + offset * 3)
+        ]
+        labels = ["0.33", "0.33", "0.33"]
+        for i in 1:length(labels)
+            label = labels[i]
+            label_x, label_y = positions[i]
+            # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
+            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
         end
-
+    elseif length(locations_to_search) == 2 
         if prize_location == "left"
             positions = [
                 ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
@@ -184,13 +189,13 @@ function visualize_left_of_blue_results(config, scene, locations_to_search, save
             ]
         elseif prize_location == "far-left"
             positions = [
-                ((5-scaled_w)/2 + offset * 2, 2.5),
-                ((5-scaled_w)/2 + offset * 2 + scaled_w, 2.5),
+                ((5-scaled_w)/2 + offset * 3, 2.5),
+                ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
             ]
         elseif prize_location == "far-right"
             positions = [
-                ((5-scaled_w)/2 + offset * 2, 2.5),
-                ((5-scaled_w)/2 + offset * 2 + scaled_w, 2.5),
+                ((5-scaled_w)/2 + offset * 3, 2.5),
+                ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
             ]
         end
 

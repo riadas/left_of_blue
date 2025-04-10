@@ -70,26 +70,32 @@ end
 
 # --- DEVELOPMENTAL STAGE 1 ---
 # no wall color parameter in spatial memory; purely geometric
-# --- new stage begins ---
 function at(location_arg::Wall, color_arg::COLOR)::Bool
     location_arg.color == color_arg
+end
+
+function my_left(location_arg::Spot)::Bool
+    location_arg.position.x < 0
+end
+
+function my_right(location_arg::Spot)::Bool
+    location_arg.position.x > 0
 end
 
 function my_left(half_arg::Half)::Bool
     half_arg.x > 0
 end
 
-# --- new stage begins ---
-# --- new stage begins ---
-# --- new stage begins ---
 function left_of(location_arg::Corner, color_arg::COLOR)::Bool
     at(location_arg.wall1, color_arg)
 end
 
-# --- new stage begins ---
-# --- new stage begins ---
-function my_left(location_arg::Spot)::Bool
-    location_arg.position.x < 0
+function right_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall2, color_arg)
+end
+
+function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
+    location2_arg.position.x > location1_arg.position.x
 end
 
 function left_of(half1_arg::Half, half2_arg::Half)::Bool
@@ -100,12 +106,6 @@ function left_of(location_arg::Wall, color_arg::COLOR)::Bool
     left_of(prev(location_arg, locations), color_arg)
 end
 
-# --- new stage begins ---
-# --- new stage begins ---
 function right_of(location_arg::Wall, color_arg::COLOR)::Bool
-    at(next(location_arg, locations).wall2, color_arg)
-end
-
-function right_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location2_arg.position.z > location1_arg.position.z
+    right_of(prev(location_arg, locations), color_arg)
 end

@@ -1,9 +1,26 @@
 include("metalanguage.jl")
-include("../spatial_config/spatial_config.jl")
+include("../spatial_config/viz.jl")
 
 global base_semantics_str = ""
 open("metalanguage/base_semantics.jl", "r") do f 
     global base_semantics_str = read(f, String)
+end
+
+# reset results folders
+category_names = ["left_of_blue", "spatial_lang_test", "red_green_test"]
+combined_results_dir = "metalanguage/results/ordered/combined"
+if isdir(combined_results_dir)
+    rm(combined_results_dir, recursive=true)
+end
+mkdir(combined_results_dir)
+
+split_results_dir = "metalanguage/results/ordered/by_category"
+if isdir(split_results_dir)
+    rm(split_results_dir, recursive=true)
+end
+mkdir(split_results_dir)
+for category_name in category_names 
+    mkdir("$(split_results_dir)/$(category_name)")
 end
 
 at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
@@ -50,7 +67,8 @@ ordered_function_sigs = [
 categories = [[Wall, Corner, DEPTH, COLOR], [Spot], [Half, Whole]]
 synthesized_semantics = Dict(map(x -> x => [], 1:length(categories)))
 prev_best_scores = Dict(map(x -> x => -1.0, 1:length(categories)))
-for function_sig in ordered_function_sigs
+for function_index in 1:length(ordered_function_sigs)
+    function_sig = ordered_function_sigs[function_index]
     category_assignment = findall(c -> intersect(function_sig.arg_types, c) != [], categories)[1]
 
     possible_semantics = []
@@ -75,6 +93,8 @@ for function_sig in ordered_function_sigs
     best_definition = ""
     best_total_score = -1
     best_full_results = nothing
+    best_locations_to_search = Dict()
+    combined_to_split_mapping = []
 
     for definition in possible_semantics 
         function_sig.definition = definition
@@ -91,6 +111,7 @@ for function_sig in ordered_function_sigs
         # if performance is higher than base language, save that program and its score
 
         scores = Dict()
+        search_locations = Dict()
 
         config_names = readdir("spatial_config/configs")
         if category_assignment == 1 # LoB experiments
@@ -180,6 +201,7 @@ for function_sig in ordered_function_sigs
 
                     if results == []
                         scores[config_name] = 1/3
+                        search_locations[config_name] = scene.locations
                     else
                         programs_and_results = sort([zip(programs, results)...], by=tup -> length(tup[1]))
                         # for tup in programs_and_results 
@@ -193,12 +215,15 @@ for function_sig in ordered_function_sigs
                         # println("score")
                         if scene.prize in res 
                             scores[config_name] = 1/length(res)
+                            search_locations[config_name] = res
                             # println(1/length(res))
-                        elseif length(res) == []
+                        elseif length(res) == 0
                             scores[config_name] = 1/3
+                            search_locations[config_name] = scene.locations
                             # println(1/3)
                         else
                             scores[config_name] = 0
+                            search_locations[config_name] = res
                             # println(0)
                         end 
                     end
@@ -219,6 +244,7 @@ for function_sig in ordered_function_sigs
                     # println("\n")
     
                     scores[config_name] = 1/length(locations_to_search)
+                    search_locations[config_name] = locations_to_search
                 end
 
             end
@@ -242,6 +268,7 @@ for function_sig in ordered_function_sigs
             best_definition = definition
             best_total_score = total_score
             best_full_results = scores
+            best_locations_to_search = search_locations
             println("----- new best!")
             println(definition)
             println(total_score)
@@ -274,11 +301,130 @@ for function_sig in ordered_function_sigs
     
         # update semantics cfg 
         global base_semantics = update_semantics_cfg(base_semantics, function_sig)
+
+        # save results
+        save_folder_name = "stage_$(lpad(string(function_index), 2, '0'))" 
+        save_dir_path_combined = "$(combined_results_dir)/$(save_folder_name)"
+        if !isdir(save_dir_path_combined)
+            mkdir(save_dir_path_combined)
+        end
+
+        category_name = category_names[category_assignment]
+        println(category_name)
+        split_stage_count = length(readdir("$(split_results_dir)/$(category_name)"))
+        save_dir_path_split = "metalanguage/results/ordered/by_category/$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"
+        if !isdir(save_dir_path_split)
+            mkdir(save_dir_path_split)
+        end
+
+        push!(combined_to_split_mapping, (save_folder_name, "$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"))
+
+        for save_dir_path in [save_dir_path_combined, save_dir_path_split]
+            ## save the single new function definition learned 
+            open("$(save_dir_path)/new_function_semantics.jl", "w") do f 
+                write(f, new_function_definition_str)
+            end
+
+            open("$(save_dir_path_split)/new_function_semantics.jl", "w") do f 
+                write(f, new_function_definition_str)
+            end
+
+            ## save individual configuration results as images
+            image_dir = "$(save_dir_path)/image_results"
+            if !isdir(image_dir)
+                mkdir(image_dir)
+            end
+
+            for config_name in keys(best_locations_to_search) 
+                locations = best_locations_to_search[config_name]
+                config = JSON.parsefile("spatial_config/configs/$(config_name)")
+                # save result images
+                save_filename = replace(config_name, ".json" => ".png")
+                save_filepath = "$(image_dir)/$(save_filename)"
+                println(save_filepath)
+                if category_name == "left_of_blue"
+                    p = visualize_left_of_blue_results(config, locations, save_filepath)
+                elseif category_name == "spatial_lang_test"
+                    p = visualize_spatial_lang_results(config, locations, save_filepath)
+                elseif category_name == "red_green_test"
+                    p = visualize_red_green_results(config, locations, save_filepath)
+                end
+            end
+
+            ## save numerical results 
+            number_dir = "$(save_dir_path)/numerical_results"
+            if !isdir(number_dir)
+                mkdir(number_dir)
+            end
+
+            ### save probabilities of correctness for each spatial config
+            accuracies = map(k -> (k, round(1/length(best_locations_to_search[k]), digits=3)), sort([keys(best_locations_to_search)...]))
+            open("$(number_dir)/accuracies.txt", "w") do f 
+                write(f, join(map(x -> string(x), accuracies), "\n"))
+            end
+
+            ### save locations to search for each spatial config (and corresponding M/R/D labels, for red-green test)
+            open("$(number_dir)/locations_to_search.txt", "w") do f
+                if category_name == "red_green_test"
+                    results = []
+                    config_names = sort([keys(best_locations_to_search)...])
+                    for config_name in config_names 
+                        locations = best_locations_to_search[config_name]
+
+                        config_filepath = "spatial_config/configs/$(config_name)"
+                        config = JSON.parsefile(config_filepath)
+                        scene = define_spatial_reasoning_problem(config_filepath)
+                        idxs = map(x -> findall(l -> l == x, scene.locations), locations)
+                        labels = map(i -> config["order"][i], idxs)
+                        push!(results, string((config_name, labels, locations)))
+                    end
+                    write(f, join(results, "\n"))
+                else
+                    write(f, join(map(k -> string((k, best_locations_to_search[k])), sort([keys(best_locations_to_search)...])), "\n"))
+                end
+            end
+
+            ### save overall percentage of perfect benchmarks
+            num_solved = count(tup -> tup[2] == 1.0, accuracies)
+            percentage_solved = round(num_solved/length(accuracies), digits=3)
+
+            open("$(number_dir)/overall_benchmark_accuracy.txt", "w") do f 
+                write(f, string(percentage_solved))
+            end
+        end
+
+
     else
         # remove function from syntax CFG 
         updated_syntax = update_syntax_cfg(base_syntax, function_sig, remove=true)
+
+        # save results
+        save_folder_name = "stage_$(lpad(string(function_index), 2, '0'))" 
+        save_dir_path_combined = "metalanguage/results/ordered/combined/$(save_folder_name)"
+        if !isdir(save_dir_path_combined)
+            mkdir(save_dir_path_combined)
+        end
+
+        category_name = category_names[category_assignment]
+        split_stage_count = length(readdir("metalanguage/results/ordered/by_category/$(category_name)"))
+        save_dir_path_split = "metalanguage/results/ordered/by_category/$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"
+        if !isdir(save_dir_path_split)
+            mkdir(save_dir_path_split)
+        end
+
+        for save_dir_path in [save_dir_path_combined, save_dir_path_split]
+            ## save the single new function definition learned 
+            open("$(save_dir_path)/new_function_semantics.jl", "w") do f 
+                write(f, "no function learned -- accuracy does not improve")
+            end
+        end
+
     end
 
+end
+
+open("metalanguage/results/ordered/combined_to_by_category_mapping.txt", "w") do f 
+    write(f, join(map(tup -> string(tup), combined_to_split_mapping), "\n"))
 end
 
 # TODO: 

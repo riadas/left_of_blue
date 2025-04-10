@@ -105,13 +105,16 @@ while length(sig_dict) != 0
 
     level_best_info = Dict()
     old_base_syntax = deepcopy(base_syntax)
+    level_base_semantics_str = base_semantics_str
     for sig_key in sig_keys_with_min 
+        println("current function sig")
+        println(sig_key)
         function_sig = sig_dict[sig_key]
         category_assignment = findall(c -> intersect(function_sig.arg_types, c) != [], categories)[1]
-        level_definitions = filter(d -> size(Meta.parse(d)) == min_AST_size, sig_semantics[sig_key])
+        println(filter(d -> (size(Meta.parse(d)) == min_AST_size), sig_semantics[sig_key]))
+        level_definitions = filter(d -> (size(Meta.parse(d)) == min_AST_size) && !(d in synthesized_semantics[category_assignment]), sig_semantics[sig_key])
+        println(level_definitions)
 
-        global base_syntax = old_base_syntax 
-        old_base_syntax = deepcopy(old_base_syntax)
         updated_syntax = update_syntax_cfg(base_syntax, function_sig)
 
         # track best semantics
@@ -120,15 +123,17 @@ while length(sig_dict) != 0
         best_full_results = nothing
 
         for definition in level_definitions
+            println("-- trying definition")
+            println(definition)
             function_sig.definition = definition
             new_function_definition_str = format_new_function_string(function_sig)
 
             # update semantics.jl file with new function and import file
-            new_semantics_str = join([base_semantics_str, new_function_definition_str], "\n")
-            open("metalanguage/intermediate_semantics.jl", "w+") do f 
+            new_semantics_str = join([level_base_semantics_str, new_function_definition_str], "\n")
+            open("metalanguage/intermediate_semantics_unordered.jl", "w+") do f 
                 write(f, new_semantics_str)
             end
-            include("intermediate_semantics.jl")
+            include("intermediate_semantics_unordered.jl")
 
             # generate lots of programs in the new language, and measure performance across suite of spatial configurations
             # if performance is higher than base language, save that program and its score
@@ -146,6 +151,9 @@ while length(sig_dict) != 0
             for config_name in config_names
                 # all non-control input spatial problems
                 if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name)
+                    println("--- CONFIG NAME")
+                    println(config_name)
+
                     config_filepath = "spatial_config/configs/$(config_name)"
                     config = JSON.parsefile(config_filepath)
 
@@ -160,7 +168,7 @@ while length(sig_dict) != 0
                     programs = []
                     num_programs = 1000
                     for _ in 1:num_programs
-                        program = generate_syntax(typeof(scene.prize), base_syntax, rect=rect, shift=shift) # rect=rect, blue=b
+                        program = generate_syntax(typeof(scene.prize), updated_syntax, rect=rect, shift=shift) # rect=rect, blue=b
                         push!(programs, program)
                     end
                     programs = unique(programs)
@@ -168,12 +176,12 @@ while length(sig_dict) != 0
                     # exclude programs that don't include the input argument
                     # println(programs)
                     programs = filter(x -> x == "true" || occursin("location", x), programs)
-                    # println(programs)
+                    println("programs")
+                    println(programs)
 
                     # evaluate all the possible spatial memory representations and select the best one
                     formatted_programs = []
                     for program in programs
-                        # println(program) 
                         if scene.prize isa Wall 
                             program = "location isa Wall && $(program)"
                         elseif scene.prize isa Corner
@@ -244,7 +252,8 @@ while length(sig_dict) != 0
                         # println(best_programs)
                         sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
                         best_program, locations_to_search = best_programs[1]
-                        # println(best_program)
+                        println("best_program")
+                        println(best_program)
                         # println(locations_to_search)
         
                         scores[config_name] = 1/length(locations_to_search)
@@ -254,6 +263,8 @@ while length(sig_dict) != 0
 
             total_score = sum([values(scores)...])
             update_best = false
+            println("values(level_best_info)")
+            println(map(x -> x[1], [values(level_best_info)...]))
             if !(definition in map(x -> x[1], [values(level_best_info)...]))
                 if total_score > best_total_score
                     update_best = true
@@ -277,9 +288,25 @@ while length(sig_dict) != 0
             end 
 
         end
+        println("best_definition")
+        println(best_definition)
+        println("best_total_score")
+        println(best_total_score)
+        println("prev_best_scores[category_assignment]")
+        println(prev_best_scores[category_assignment])
+        if !isnothing(best_full_results)
+            for k in keys(best_full_results)
+                println(string((k, best_full_results[k])))
+            end
+        end
+
         if best_total_score > prev_best_scores[category_assignment]
             prev_best_scores[category_assignment] = best_total_score
             level_best_info[sig_key] = (best_definition, best_total_score, best_full_results)
+            push!(synthesized_semantics[category_assignment], best_definition)
+
+            function_sig.definition = best_definition
+            level_base_semantics_str = join([level_base_semantics_str, format_new_function_string(function_sig)], "\n")
         else
             # TODO: figure out how to properly handle prev_best_scores in the unordered case
             other_AST_sizes = filter(x -> x != min_AST_size, sig_AST_sizes[sig_key])
@@ -289,6 +316,9 @@ while length(sig_dict) != 0
                 push!(failed_AST_sizes[sig_key], min_AST_size)
             end
             sig_keys_with_min = filter(x -> x != sig_key, sig_keys_with_min)
+
+            # reset to prev syntax only if we don't accept this function 
+            global base_syntax = update_syntax_cfg(base_syntax, function_sig, remove=true)  
         end
     end
 
@@ -322,7 +352,7 @@ while length(sig_dict) != 0
         println("new function definition")
         println(new_function_definition_str)
         
-        push!(synthesized_semantics[category_assignment], best_definition)
+        # push!(synthesized_semantics[category_assignment], best_definition)
 
         global base_semantics_str = join([base_semantics_str, new_function_definition_str], "\n")
 
