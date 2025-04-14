@@ -68,6 +68,29 @@ function next(location::Location, locations)
     locations[next_index]
 end
 
+# lower-level coord interface, not to be learned from data
+function coord(location::Spot)
+    location.position.x
+end
+
+function coord(location::Half)
+    location.x
+end
+
+function coord(location::Whole)
+    (location.coral.x + location.green.x) / 2
+end
+
+# coordinates are relative, in the LoB setting
+function coord(location1::Union{Wall, Corner}, location2::Union{Wall, Corner}, locations::Vector{Union{Wall, Corner}})
+    # second location is reference location; count # of prev's versus next's to reach location1 from location2, and
+    # the signed count with minimum absolute value
+    index1 = first(findall(x -> x == location1, locations))
+    index2 = first(findall(x -> x == location2, locations))
+
+    index1 - index2
+end
+
 # --- DEVELOPMENTAL STAGE 1 ---
 # no wall color parameter in spatial memory; purely geometric
 # --- new stage begins ---
@@ -76,21 +99,9 @@ function at(location_arg::Wall, color_arg::COLOR)::Bool
 end
 
 function my_left(half_arg::Half)::Bool
-    half_arg.x > 0
+    half_arg.x < 0
 end
 
-# --- new stage begins ---
-# --- new stage begins ---
-# --- new stage begins ---
-function left_of(location_arg::Corner, color_arg::COLOR)::Bool
-    at(location_arg.wall1, color_arg)
-end
-
-function right_of(location_arg::Corner, color_arg::COLOR)::Bool
-    at(location_arg.wall2, color_arg)
-end
-
-# --- new stage begins ---
 function my_left(location_arg::Spot)::Bool
     location_arg.position.x < 0
 end
@@ -99,22 +110,31 @@ function my_right(location_arg::Spot)::Bool
     location_arg.position.x > 0
 end
 
+# --- new stage begins ---
+function left_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall2, color_arg)
+end
+
+function right_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall1, color_arg)
+end
+
 function left_of(half1_arg::Half, half2_arg::Half)::Bool
-    half2_arg.x > half1_arg.x
+    half1_arg.x < half2_arg.x
 end
 
 function left_of(location_arg::Wall, color_arg::COLOR)::Bool
-    left_of(prev(location_arg, locations), color_arg)
-end
-
-function right_of(location_arg::Wall, color_arg::COLOR)::Bool
-    right_of(next(location_arg, locations), color_arg)
+    at(next(location_arg, locations).wall2, color_arg)
 end
 
 function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
     location1_arg.position.x < location2_arg.position.x
 end
 
+function right_of(location_arg::Wall, color_arg::COLOR)::Bool
+    at(prev(location_arg, locations).wall1, color_arg)
+end
+
 function right_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location2_arg.position.z > location1_arg.position.z
+    location2_arg.position.z > location1_arg.position.x
 end

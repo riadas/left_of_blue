@@ -68,5 +68,28 @@ function next(location::Location, locations)
     locations[next_index]
 end
 
+# lower-level coord interface, not to be learned from data
+function coord(location::Spot)
+    location.position.x
+end
+
+function coord(location::Half)
+    location.x
+end
+
+function coord(location::Whole)
+    (location.coral.x + location.green.x) / 2
+end
+
+# coordinates are relative, in the LoB setting
+function coord(location1::Union{Wall, Corner}, location2::Union{Wall, Corner}, locations::Vector{Union{Wall, Corner}})
+    # second location is reference location; count # of prev's versus next's to reach location1 from location2, and
+    # the signed count with minimum absolute value
+    index1 = first(findall(x -> x == location1, locations))
+    index2 = first(findall(x -> x == location2, locations))
+
+    index1 - index2
+end
+
 # --- DEVELOPMENTAL STAGE 1 ---
 # no wall color parameter in spatial memory; purely geometric
