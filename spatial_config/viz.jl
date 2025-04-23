@@ -16,6 +16,12 @@ end
 
 function visualize_left_of_blue_problem(config, save_filepath="", display2D=true)
     rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+    if !("length" in keys(config))
+        config["length"] = 3 
+        config["width"] = 2 
+        config["accent_wall"] = false 
+        config["prize"] = ""
+    end
     l = config["length"]
     w = config["width"]
     accent_wall = config["accent_wall"]
@@ -38,30 +44,33 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
 
     # potentially add blue wall
     accent_width = 0.05
-    if accent_wall
+    if accent_wall == "alternating"
+        plot!(rectangle(scaled_w, accent_width,(5-scaled_w)/2,(5-scaled_l)/2 + scaled_l), opacity=1, grid=false, axis=([], false), legend=false, size=(400, 400), color="blue")
+        plot!(rectangle(scaled_w, accent_width,(5-scaled_w)/2,(5-scaled_l)/2), opacity=1, grid=false, axis=([], false), legend=false, size=(400, 400), color="blue")
+    elseif accent_wall
         plot!(rectangle(scaled_w, accent_width,(5-scaled_w)/2,(5-scaled_l)/2 + scaled_l), opacity=1, grid=false, axis=([], false), legend=false, size=(400, 400), color="blue")
     end
 
     # add prize location
     offset = accent_width * 4
-    if prize_location == "left" 
-        location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + scaled_l - offset]
-    elseif prize_location == "center"
-        location = [2.5, (5-scaled_l)/2 + scaled_l - offset]
-    elseif prize_location == "right"
-        location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + scaled_l - offset]
-    elseif prize_location == "far-left"
-        location = [(5 - scaled_w)/2 + offset, 2.5]
-    elseif prize_location == "far-right"
-        location = [(5 - scaled_w)/2 + scaled_w - offset, 2.5]
-    elseif prize_location == "far-left-corner"
-        location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + offset]
-    elseif prize_location == "far-right-corner"
-        location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + offset]
-    elseif prize_location == "" 
-        location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + scaled_l - offset]
+    if prize_location != ""
+        if prize_location == "left" 
+            location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + scaled_l - offset]
+        elseif prize_location == "center"
+            location = [2.5, (5-scaled_l)/2 + scaled_l - offset]
+        elseif prize_location == "right"
+            location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + scaled_l - offset]
+        elseif prize_location == "far-left"
+            location = [(5 - scaled_w)/2 + offset, 2.5]
+        elseif prize_location == "far-right"
+            location = [(5 - scaled_w)/2 + scaled_w - offset, 2.5]
+        elseif prize_location == "far-left-corner"
+            location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + offset]
+        elseif prize_location == "far-right-corner"
+            location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + offset]
+        end
+        scatter!(location[1:1], location[2:2], markershape=:star5, markersize=7, markercolor="red", markerstrokecolor="red")
     end
-    scatter!(location[1:1], location[2:2], markershape=:star5, markersize=7, markercolor="red", markerstrokecolor="red")
 
     # add dimension labels
     width_label_x = 2.5
@@ -281,15 +290,20 @@ function visualize_special_corner_problem(config, save_filepath="")
     config["length"] = 2
     config["width"] = 3
     config["accent_wall"] = false 
-    config["prize"] = ""
+    config["prize"] = config["subtype"] == "modified" ? "far-right-corner" : "left"
     p = visualize_left_of_blue_problem(config)
 
     scaled_l = 4 
     scaled_w = 8/3
     offset = 0.2
 
-    p = scatter!(p, ((5 - scaled_w)/2, (5-scaled_l)/2 + scaled_l), color="pink")
-    p = scatter!(p, ((5 - scaled_w)/2 + scaled_w, (5-scaled_l)/2), color="green")
+    if config["subtype"] == "unmodified"
+        p = scatter!(p, ((5 - scaled_w)/2, (5-scaled_l)/2 + scaled_l), color="pink")
+        p = scatter!(p, ((5 - scaled_w)/2 + scaled_w, (5-scaled_l)/2), color="green")    
+    else
+        p = scatter!(p, ((5 - scaled_w)/2, (5-scaled_l)/2), color="pink")
+        p = scatter!(p, ((5 - scaled_w)/2 + scaled_w, (5-scaled_l)/2), color="green")    
+    end
 
     if save_filepath != ""
         savefig(save_filepath)
@@ -302,23 +316,47 @@ function visualize_special_corner_results(config, locations_to_search, save_file
     config["length"] = 2
     config["width"] = 3 
     config["accent_wall"] = false 
-    config["prize"] = ""
+    config["prize"] = config["subtype"] == "modified" ? "far-right-corner" : "left"
     p = visualize_special_corner_problem(config)
 
     scaled_l = 4 
     scaled_w = 8/3
     offset = 0.2
 
-    if length(locations_to_search) == 2 
-        positions = [
-            ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-            ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
-        ]
-    elseif length(locations_to_search) == 1 
-        positions = [
-            ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-        ]    
+    if config["subtype"] == "modified"
+
+        if length(locations_to_search) == 2 
+            positions = [
+                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2) + offset * 2, # pink 
+                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2) + offset * 2, # green 
+            ]
+        elseif length(locations_to_search) == 1 
+            if locations_to_search[1].color == blue 
+                positions = [
+                    ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + offset * 2), # pink
+                ]    
+            else
+                positions = [
+                    ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2), # green
+                ]
+            end
+        end
+
+    else
+
+        if length(locations_to_search) == 2 
+            positions = [
+                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
+            ]
+        elseif length(locations_to_search) == 1 
+            positions = [
+                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+            ]    
+        end
+
     end
+
     labels = map(x -> "$(round(1/length(locations_to_search), digits=2))", 1:length(locations_to_search))
 
     for i in 1:length(labels)

@@ -279,13 +279,12 @@ function genDEPTH_semantics(arg_names::Vector{String}, arg_types::Vector{DataTyp
 end
 
 function genCOLOR_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    if arg_types[1] == Wall 
+    if arg_types[1] == SpecialCorner
+        "$(arg_names[1]).color"
+    else
         wall = genWall_semantics(arg_names, arg_types)
         "$(wall).color"
-    elseif arg_types[1] == SpecialCorner
-        "$(arg_names[1]).color"
     end
-
 end
 
 function genSpot_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})

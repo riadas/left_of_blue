@@ -15,9 +15,25 @@ for ratio in dimension_ratios
             config["width"] = ratio[2]
             config["accent_wall"] = accent_wall
             config["prize"] = prize_spec
-
+            config["utterance"] = ""
             open("""spatial_config/configs/$(ratio[1] == ratio[2] ? "square" : "rect")_room_$(accent_wall ? "" : "no_")blue_wall_$(prize_spec)_prize.json""", "w") do f
                 JSON.print(f, config)
+            end
+
+            if ratio == (2, 3) && accent_wall && prize_spec == "left"
+                utterances = Dict([
+                    "pretty" => "Look at the pretty blue wall",
+                    "at_blue" => "I'm hiding it at the blue wall",
+                    "blue_helpful" => "The blue wall can help you get the prize"
+                ])
+                for k in keys(utterances)
+                    config["utterance"] = utterances[k]
+
+                    open("""spatial_config/configs/$(ratio[1] == ratio[2] ? "square" : "rect")_room_$(accent_wall ? "" : "no_")blue_wall_$(prize_spec)_prize_utterance_$(k).json""", "w") do f
+                        JSON.print(f, config)
+                    end        
+                    
+                end
             end
 
         end
@@ -109,6 +125,23 @@ end
 # generate rectangular rooms with colored corners ("SpecialCorner") configs
 config = Dict()
 config["type"] = "special_corner"
+config["subtype"] = "unmodified"
 open("""spatial_config/configs/rect_room_special_corner.json""", "w") do f
+    JSON.print(f, config)
+end
+
+config["subtype"] = "modified"
+open("""spatial_config/configs/rect_room_special_corner_modified.json""", "w") do f
+    JSON.print(f, config)
+end
+
+# generate alternating
+config = Dict()
+config["type"] = "left_of_blue"
+config["length"] = 1
+config["width"] = 1
+config["prize"] = "left"
+config["accent_wall"] = "alternating"
+open("""spatial_config/configs/square_room_alternating_blue_wall_left_prize.json""", "w") do f
     JSON.print(f, config)
 end

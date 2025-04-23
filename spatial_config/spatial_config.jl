@@ -34,12 +34,16 @@ function define_left_of_blue_problem(config)
         far_distance = far
     end
 
-    accent_color = accent_wall ? blue : white
+    if accent_wall != "alternating"
+        accent_color = accent_wall ? blue : white
+    else
+        accent_color = blue
+    end
 
     wall1 = Wall(close_distance, white)
     wall2 = Wall(far_distance, accent_color)
     wall3 = Wall(close_distance, white)
-    wall4 = Wall(far_distance, white)
+    wall4 = Wall(far_distance, accent_wall == "alternating" ? accent_color : white)
 
     corner1 = Corner(wall1, wall2)
     corner2 = Corner(wall2, wall3)
@@ -149,10 +153,17 @@ function define_special_corner_problem(config)
     wall3 = Wall(close, white)
     wall4 = Wall(far, white)
 
-    corner1 = SpecialCorner(wall1, wall2, blue)
-    corner2 = Corner(wall2, wall3)
-    corner3 = SpecialCorner(wall3, wall4, white)
-    corner4 = Corner(wall4, wall1)
+    if config["subtype"] == "unmodified"
+        corner1 = SpecialCorner(wall1, wall2, blue)
+        corner2 = Corner(wall2, wall3)
+        corner3 = SpecialCorner(wall3, wall4, white)
+        corner4 = Corner(wall4, wall1)    
+    else
+        corner1 = SpecialCorner(wall1, wall2, blue)
+        corner2 = SpecialCorner(wall2, wall3, white)
+        corner3 = Corner(wall3, wall4)
+        corner4 = Corner(wall4, wall1)    
+    end
 
     locations = [wall1, corner1, wall2, corner2, wall3, corner3, wall4, corner4] 
     prize = corner1

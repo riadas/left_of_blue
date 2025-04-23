@@ -131,6 +131,15 @@ function translate_from_NL(scene, functions, max_language_augmented_AST_size)
     utterance = scene.utterance 
     types = map(x -> typeof(x), scene.locations)
 
+    if Corner in types 
+        program_segment = "&& location.wall2 == blue"
+        if size(Meta.parse(program_segment)) <= max_language_augmented_AST_size 
+            return (nothing, program_segment)
+        else
+            return (nothing, "")
+        end
+    end
+
     if Spot in types # spatial lang understanding test
         center_x = Int(sum(map(x -> x.position.x, scene.locations))/length(scene.locations))
         parts = split(lowercase(utterance), " ")
