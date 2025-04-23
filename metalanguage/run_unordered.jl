@@ -23,6 +23,7 @@ for category_name in category_names
     mkdir("$(split_results_dir)/$(category_name)")
 end
 combined_to_split_mapping = []
+categories = [[Wall, Corner, DEPTH, COLOR], [Spot], [Half, Whole]]
 
 function test()
     at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
@@ -576,7 +577,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     search_locations = Dict()
     for config_name in config_names
         # all non-control input spatial problems
-        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name)
+        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) && !occursin("utterance", config_name)
             println("--- CONFIG NAME")
             println(config_name)
 

@@ -3,7 +3,10 @@ abstract type Location end
 mutable struct Scene
     locations::Vector{Location}
     prize::Location
+    utterance::String
 end
+
+Scene(locations, prize) = Scene(locations, prize, "")
 
 # --- LoB PROBLEM SPECIFICATION ---
 @enum DEPTH close=5 mid=10 far=15
@@ -102,6 +105,16 @@ function my_left(half_arg::Half)::Bool
     half_arg.x < 0
 end
 
+# --- new stage begins ---
+function left_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall1, color_arg)
+end
+
+function right_of(location_arg::Corner, color_arg::COLOR)::Bool
+    at(location_arg.wall2, color_arg)
+end
+
+# --- new stage begins ---
 function my_left(location_arg::Spot)::Bool
     location_arg.position.x < 0
 end
@@ -110,31 +123,22 @@ function my_right(location_arg::Spot)::Bool
     location_arg.position.x > 0
 end
 
-# --- new stage begins ---
-function left_of(location_arg::Corner, color_arg::COLOR)::Bool
-    at(location_arg.wall2, color_arg)
-end
-
-function right_of(location_arg::Corner, color_arg::COLOR)::Bool
-    at(location_arg.wall1, color_arg)
-end
-
 function left_of(half1_arg::Half, half2_arg::Half)::Bool
-    half1_arg.x < half2_arg.x
+    half2_arg.x > half1_arg.x
 end
 
 function left_of(location_arg::Wall, color_arg::COLOR)::Bool
-    at(next(location_arg, locations).wall2, color_arg)
-end
-
-function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location1_arg.position.x < location2_arg.position.x
+    left_of(prev(location_arg, locations), color_arg)
 end
 
 function right_of(location_arg::Wall, color_arg::COLOR)::Bool
-    at(prev(location_arg, locations).wall1, color_arg)
+    right_of(next(location_arg, locations), color_arg)
+end
+
+function left_of(location1_arg::Spot, location2_arg::Spot)::Bool
+    location2_arg.position.x > location1_arg.position.x
 end
 
 function right_of(location1_arg::Spot, location2_arg::Spot)::Bool
-    location2_arg.position.z > location1_arg.position.x
+    location2_arg.position.z > location1_arg.position.z
 end

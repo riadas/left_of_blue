@@ -1,6 +1,8 @@
 include("metalanguage.jl")
 include("../spatial_config/viz.jl")
+include("api.jl")
 
+global alpha = 1.0 # 0.5
 global base_semantics_str = ""
 open("metalanguage/base_semantics.jl", "r") do f 
     global base_semantics_str = read(f, String)
@@ -8,13 +10,13 @@ end
 
 # reset results folders
 category_names = ["left_of_blue", "spatial_lang_test", "red_green_test"]
-combined_results_dir = "metalanguage/results/unordered/combined"
+combined_results_dir = "metalanguage/results/unordered_analogy/combined"
 if isdir(combined_results_dir)
     rm(combined_results_dir, recursive=true)
 end
 mkdir(combined_results_dir)
 
-split_results_dir = "metalanguage/results/unordered/by_category"
+split_results_dir = "metalanguage/results/unordered_analogy/by_category"
 if isdir(split_results_dir)
     rm(split_results_dir, recursive=true)
 end
@@ -23,9 +25,12 @@ for category_name in category_names
     mkdir("$(split_results_dir)/$(category_name)")
 end
 combined_to_split_mapping = []
+categories = [[Wall, Corner, SpecialCorner, DEPTH, COLOR], [Spot], [Half, Whole]]
 
 function test()
     at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
+    at_function_special_corner = Function("at", ["location_arg", "color_arg"], [SpecialCorner, COLOR], "")
+
     my_left_function = Function("my_left", ["location_arg", "depth_arg"], [Corner, DEPTH], "")
     left_of_function = Function("left_of", ["location_arg", "color_arg"], [Corner, COLOR], "")
 
@@ -47,8 +52,12 @@ function test()
     left_of_function_wall = Function("left_of", ["location_arg", "color_arg"], [Wall, COLOR], "")
     right_of_function_wall = Function("right_of", ["location_arg", "color_arg"], [Wall, COLOR], "")
 
-    function_sigs = [
+    left_of_function_with_depth = Function("left_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
+    right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
+
+    all_function_sigs = [
                         at_function, 
+                        # at_function_special_corner,
                         my_left_function,
                         my_right_function,
                         my_left_function_spot,
@@ -62,17 +71,20 @@ function test()
                         left_of_function_whole,
                         right_of_function_whole,
                         left_of_function_wall,
-                        right_of_function_wall
+                        right_of_function_wall,
+                        # left_of_function_with_depth,
+                        # right_of_function_with_depth
                     ] 
 
-    sig_keys = map(sig -> split(format_new_function_string(sig), "\n")[1], function_sigs)
-    sig_dict = Dict(zip(sig_keys, function_sigs))
+    sig_keys = map(sig -> split(format_new_function_string(sig), "\n")[1], all_function_sigs)
+    sig_dict = Dict(zip(sig_keys, all_function_sigs))
     failed_AST_sizes = Dict(map(k -> k => [], sig_keys))
 
     categories = [[Wall, Corner, DEPTH, COLOR], [Spot], [Half, Whole]]
     synthesized_semantics = Dict(map(x -> x => [], 1:length(categories)))
     prev_best_scores = Dict(map(x -> x => -1.0, 1:length(categories)))
     name_biases = Dict()
+    max_language_augmented_AST_size = 0
     while length(sig_dict) != 0
         println("START OF LOOP")
         println(length(sig_dict))
@@ -117,6 +129,8 @@ function test()
         end
 
         all_AST_sizes = unique(vcat([values(sig_AST_sizes)...]...))
+        println("all_AST_sizes")
+        println(all_AST_sizes)
 
         min_AST_size = minimum(all_AST_sizes)
 
@@ -147,7 +161,8 @@ function test()
             best_locations_to_search = Dict()
 
             for definition in level_definitions
-                total_score, scores, search_locations = evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax)
+                possible_sigs = filter(x -> x != function_sig, all_function_sigs)
+                total_score, scores, search_locations, _ = evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, 0, possible_sigs)
 
                 update_best = false
                 println("values(level_best_info)")
@@ -265,8 +280,8 @@ function test()
             end
             # save results
             ## create new combined stage folder
-            combined_stage_count = length(readdir("$(combined_results_dir)"))
-            save_folder_name = "stage_$(lpad(string(combined_stage_count), 2, '0'))" 
+            combined_stage_count = length(filter(x -> !occursin("language_augmented", x), readdir("$(combined_results_dir)")))
+            save_folder_name = "stage_$(lpad(string(combined_stage_count + 1), 2, '0'))" 
             save_dir_path_combined = "$(combined_results_dir)/$(save_folder_name)"
             if !isdir(save_dir_path_combined)
                 mkdir(save_dir_path_combined)
@@ -291,6 +306,8 @@ function test()
         #     delete!(sig_dict, winner)
         # end 
 
+        # abstraction/analogy loop -- same_name_different_args and different_name_same_args
+        num_completed_sigs = length(completed_sigs)
         while completed_sigs != []
             println("ANALOGY LOOP")
             println(length(completed_sigs))
@@ -378,7 +395,9 @@ function test()
                     println(analogous_definition)
                     sig.definition = analogous_definition
                     updated_syntax = update_syntax_cfg(base_syntax, sig)
-                    total_score, scores, search_locations = evaluate_semantics(sig, analogous_definition, category_assignment, level_base_semantics_str, updated_syntax)
+                    possible_sigs = filter(x -> x != sig, all_function_sigs)
+
+                    total_score, scores, search_locations, _ = evaluate_semantics(sig, analogous_definition, category_assignment, level_base_semantics_str, updated_syntax, 0, possible_sigs)
                     println("total_score")
                     println(total_score)
                     println("prev_best_scores[category_assignment]")
@@ -403,6 +422,7 @@ function test()
                     println(sig_key)
 
                     sig = sig_dict[sig_key]
+                    category_assignment = findall(c -> intersect(sig.arg_types, c) != [], categories)[1]
 
                     # evaluate new definition and see if it improves score
                     analogous_definition = generate_analogous_semantics(completed_sig, sig, false)
@@ -410,7 +430,9 @@ function test()
                     println(analogous_definition)
                     sig.definition = analogous_definition
                     updated_syntax = update_syntax_cfg(base_syntax, sig)
-                    total_score, scores, search_locations = evaluate_semantics(sig, analogous_definition, category_assignment, level_base_semantics_str, updated_syntax)
+
+                    possible_sigs = filter(x -> x != sig, all_function_sigs)
+                    total_score, scores, search_locations, _ = evaluate_semantics(sig, analogous_definition, category_assignment, level_base_semantics_str, updated_syntax, 0, possible_sigs)
                     if total_score > prev_best_scores[category_assignment]
                         prev_best_scores[category_assignment] = total_score
                         level_best_info[sig_key] = (analogous_definition, total_score, scores, search_locations)
@@ -434,6 +456,78 @@ function test()
                 sig = sig_dict[k]
                 update_final_syntax_and_semantics(k, sig_dict, level_best_info, base_semantics_str, base_semantics, base_syntax, save_folder_name, save_dir_path_combined, new_split_folder_created)
                 push!(completed_sigs, sig)
+            end
+        end
+
+        println(completed_sigs)
+        if num_completed_sigs > 0
+            println("beginning language augmented loop")
+            # language-augmented abstraction loop
+            println("bounds")
+            @show min_AST_size + 1
+            @show max_language_augmented_AST_size + 1
+            @show maximum([min_AST_size + 1, max_language_augmented_AST_size + 1])
+            @show maximum(all_AST_sizes)
+            
+            for m in maximum([min_AST_size + 1, max_language_augmented_AST_size + 1]):maximum(all_AST_sizes)
+                max_language_augmented_AST_size = m
+                println("LANGUAGE AUGMENTED LOOP, m=$(m)")
+    
+                # evaluate current semantics with new language-abstraction potential, and save results as new stage
+                total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, base_semantics_str, base_syntax, max_language_augmented_AST_size, all_function_sigs)
+                println("temp_semantics")
+                println(temp_semantics)
+                # save results
+                ## create new combined stage folder
+                combined_stage_count = length(filter(x -> !occursin("language_augmented", x), readdir("$(combined_results_dir)")))
+                save_folder_name = "stage_$(lpad(string(combined_stage_count), 2, '0'))_language_augmented_$(m)" 
+                save_dir_path_combined = "$(combined_results_dir)/$(save_folder_name)"
+                if !isdir(save_dir_path_combined)
+                    mkdir(save_dir_path_combined)
+                end
+    
+                new_split_folder_created = Dict(map(n -> n => false, category_names))
+                for c in 1:3
+                    # category_names = ["left_of_blue", "spatial_lang_test", "red_green_test"]
+                    category_scores = Dict()
+                    category_search_locations = Dict()
+                    for k in keys(scores)
+                        if c == 1
+                            if occursin("room", k)
+                                category_scores[k] = scores[k]
+                                category_search_locations[k] = search_locations[k]
+                            end
+                        elseif c == 2 
+                            if occursin("spatial", k)
+                                category_scores[k] = scores[k]
+                                category_search_locations[k] = search_locations[k]
+                            end
+                        elseif c == 3 
+                            if occursin("green", k)
+                                category_scores[k] = scores[k]
+                                category_search_locations[k] = search_locations[k]
+                            end
+                        end
+                    end
+                    info = Dict()
+                    info["$(c)"] = ("", sum([values(category_scores)...]), category_scores, category_search_locations)
+                    
+                    temp_semantics_strings = unique(map(x -> format_new_function_string(x), temp_semantics))
+
+                    category_type_annotations = map(x -> "::$(repr(x))", categories[c])
+                    temp_semantics_strings = filter(x -> foldl(|, map(y -> occursin(y, x), category_type_annotations), init=false), temp_semantics_strings)
+
+                    new_func_str = "# no new permanent functions -- language augmentation test (max AST size = $(m))/n# temporary functions: $(length(temp_semantics_strings))"
+                    new_func_str = """$(new_func_str)\n$(join(temp_semantics_strings, "\n"))"""
+                    save_results("$(c)", info, c, save_folder_name, save_dir_path_combined, new_split_folder_created, new_func_str)
+                end
+            end
+            println("ending language augmented loop")
+            # max_language_augmented_AST_size = 0
+    
+            # reset base semantics file after language augmented loop
+            open("metalanguage/final_semantics_unordered_analogy.jl", "w+") do f 
+                write(f, base_semantics_str)
             end
         end
 
@@ -477,6 +571,15 @@ end
 comparison_opposites = Dict(["<" => ">", ">" => "<"])
 
 function generate_analogous_semantics(completed_sig, sig, similar_name=true)
+    if length(sig.arg_types) == 3 
+        old_definition = completed_sig.definition 
+        old_arg_name = completed_sig.arg_names[end]
+        new_arg_name = sig.arg_names[end]
+        new_component = replace(old_definition, old_arg_name => new_arg_name)
+        new_definition = "$(old_definition) && $(new_component)"
+        return new_definition
+    end
+
     if intersect(completed_sig.arg_types, [Wall, Corner]) == []
         parts = split(completed_sig.definition, " ")
         old_comparison_str = parts[end - 1]
@@ -602,18 +705,23 @@ function coordExpressions(function_sig)
     end
 end
 
-function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax)
+function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions)
     println("-- trying definition")
     println(definition)
-    function_sig.definition = definition
-    new_function_definition_str = format_new_function_string(function_sig)
+    if !isnothing(function_sig)
+        function_sig.definition = definition
+        new_function_definition_str = format_new_function_string(function_sig)
+    
+        # update semantics.jl file with new function and import file
+        new_semantics_str = join([level_base_semantics_str, new_function_definition_str], "\n")
+    else
+        new_semantics_str = level_base_semantics_str
+    end
 
-    # update semantics.jl file with new function and import file
-    new_semantics_str = join([level_base_semantics_str, new_function_definition_str], "\n")
-    open("metalanguage/intermediate_outputs/intermediate_semantics_unordered.jl", "w+") do f 
+    open("metalanguage/intermediate_outputs/intermediate_semantics_unordered_analogy.jl", "w+") do f 
         write(f, new_semantics_str)
     end
-    include("intermediate_outputs/intermediate_semantics_unordered.jl")
+    include("intermediate_outputs/intermediate_semantics_unordered_analogy.jl")
 
     # generate lots of programs in the new language, and measure performance across suite of spatial configurations
     # if performance is higher than base language, save that program and its score
@@ -627,14 +735,32 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
         config_names = filter(x -> occursin("green", x), config_names)
     end
 
+    # DEBUGGING: DELETE LATER
+    seen_utterance = Dict([
+        "true" => false,
+        "directional" => false, 
+        "prettier" => false, 
+        "neutral" => false
+    ])
+
     scores = Dict()
     search_locations = Dict()
+    temp_semantics = []
+    using_temp_semantics = false
     for config_name in config_names
         # all non-control input spatial problems
-        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name)
+        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) && !occursin("triangle", config_name) && !occursin("special_corner", config_name) && !occursin("-corner", config_name) # && !occursin("utterance", config_name)
             # println("--- CONFIG NAME")
-            # println(config_name)
-
+            # println(config_name)            
+            # if occursin("utterance", config_name)
+            #     t = replace(split(config_name, "utterance_")[end], ".json" => "")
+            #     if !seen_utterance[t]
+            #         seen_utterance[t] = true
+            #     else
+            #         continue
+            #     end
+            # end
+            println(config_name)
             config_filepath = "spatial_config/configs/$(config_name)"
             config = JSON.parsefile(config_filepath)
 
@@ -643,7 +769,12 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
 
             # generate a lot of possible spatial memory expressions
             rect = filter(l -> l isa Wall && l.depth == mid, scene.locations) == []
-            shift = occursin("shift", config_name) ? parse(Int, replace(split(config_name, "shift_")[end], ".json" => "")) : 0
+            if occursin("utterance", config_name)
+
+                shift = occursin("shift", config_name) ? parse(Int, filter(x -> x != "", split(split(config_name, "utterance_")[1], "_"))[end]) : 0
+            else
+                shift = occursin("shift", config_name) ? parse(Int, replace(split(config_name, "shift_")[end], ".json" => "")) : 0
+            end
 
             # b = filter(l -> l isa Wall && l.color == blue, scene.locations) != []
             programs = []
@@ -653,12 +784,54 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 push!(programs, program)
             end
             programs = unique(programs)
+            
+            using_temp_semantics = false
+            temp_program = ""
+            temp_func = nothing
+            if occursin("utterance", config_name) && (occursin("green", config_name) && !occursin("next", scene.utterance) || occursin("spatial", config_name)) && max_language_augmented_AST_size != 0
+                new_func = nothing
+                if occursin("green", config_name) # red-green test
+                    new_func, new_program = translate_from_NL_and_image(scene, all_functions, max_language_augmented_AST_size)
+                else # spatial lang. test
+                    new_func, new_program = translate_from_NL(scene, all_functions, max_language_augmented_AST_size)
+                end
+
+                if !isnothing(new_func)
+                    # update semantics 
+                    new_func_str = format_new_function_string(new_func)
+                    new_func_str_first_line = split(new_func_str, "\n")[1]
+
+                    if occursin(new_func_str_first_line, new_semantics_str)
+                        prefix = split(new_semantics_str, new_func_str_first_line)[1]
+                        suffix_unedited = split(new_semantics_str, new_func_str_first_line)[end]
+                        suffix = split(suffix_unedited,"\nend")[end]
+                        new_semantics_str = join([prefix, new_func_str, suffix], "\n")
+                    else
+                        new_semantics_str = join([new_semantics_str, new_func_str], "\n")
+                        open("metalanguage/intermediate_outputs/intermediate_semantics_unordered_analogy.jl", "w+") do f 
+                            write(f, new_semantics_str)
+                        end    
+                    end
+                    println(new_semantics_str)
+                    include("intermediate_outputs/intermediate_semantics_unordered_analogy.jl")
+                
+                    push!(programs, new_program)
+                    programs = unique(programs)
+                    temp_program = new_program 
+                    temp_func = new_func
+                    println("TEMP PROGRAM")
+                    println(temp_program)
+                    println("TEMP FUNC")
+                    println(temp_func)
+                    using_temp_semantics = true
+                end
+            end
 
             # exclude programs that don't include the input argument
             # println(programs)
             programs = filter(x -> x == "true" || occursin("location", x), programs)
-            # println("programs")
-            # println(programs)
+            println("programs")
+            println(programs)
 
             # evaluate all the possible spatial memory representations and select the best one
             formatted_programs = []
@@ -719,6 +892,10 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                     programs_and_results = sort([zip(programs, results)...], by=tup -> length(tup[1]))
                     program, res = programs_and_results[end]
 
+                    if program == temp_program
+                        push!(temp_semantics, temp_func)
+                    end
+
                     if scene.prize in res 
                         scores[config_name] = 1/length(res)
                         search_locations[config_name] = res
@@ -737,14 +914,24 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
 
                 best_indices = findall(t -> length(t[2]) == minimum(map(tup -> length(tup[2]), programs_and_results)), programs_and_results)
                 best_programs = map(i -> programs_and_results[i], best_indices)
-                # println(best_programs)
+                println(best_programs)
                 sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
                 best_program, locations_to_search = best_programs[1]
-                # println("best_program")
-                # println(best_program)
-                # println(locations_to_search)
 
-                scores[config_name] = 1/length(locations_to_search)
+                
+                if best_program == temp_program
+                    push!(temp_semantics, temp_func)
+                end
+                println("best_program")
+                println(best_program)
+                println("temp_program")
+                println(temp_program)
+                # println(locations_to_search)
+                if occursin("spatial", config_name) && !using_temp_semantics && (occursin("left", best_program) || occursin("right", best_program)) 
+                    scores[config_name] = 1/length(locations_to_search) * alpha
+                else
+                    scores[config_name] = 1/length(locations_to_search)
+                end
                 search_locations[config_name] = locations_to_search
 
             end
@@ -752,7 +939,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     end
 
     total_score = sum([values(scores)...])
-    return (round(total_score, digits=6), scores, search_locations)
+    return (round(total_score, digits=6), scores, search_locations, temp_semantics)
 end
 
 function save_results(sig_key, level_best_info, category_assignment, save_folder_name, save_dir_path_combined, new_split_folder_created, new_function_definition_str)
@@ -761,23 +948,19 @@ function save_results(sig_key, level_best_info, category_assignment, save_folder
     split_stage_count = length(readdir("$(split_results_dir)/$(category_name)"))
     if !new_split_folder_created[category_name]
         println(category_name)
-        save_dir_path_split = "metalanguage/results/unordered/by_category/$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"
+        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"
         if !isdir(save_dir_path_split)
             mkdir(save_dir_path_split)
         end
         new_split_folder_created[category_name] = true
         push!(combined_to_split_mapping, (save_folder_name, "$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"))
     else
-        save_dir_path_split = "metalanguage/results/unordered/by_category/$(category_name)/stage_$(lpad(string(split_stage_count), 2, '0'))"
+        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count), 2, '0'))"
     end
 
     for save_dir_path in [save_dir_path_combined, save_dir_path_split]
         ## save the single new function definition learned 
         open("$(save_dir_path)/new_function_semantics.jl", "a") do f 
-            write(f, new_function_definition_str)
-        end
-
-        open("$(save_dir_path_split)/new_function_semantics.jl", "a") do f 
             write(f, new_function_definition_str)
         end
 

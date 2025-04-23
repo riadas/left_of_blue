@@ -3,7 +3,10 @@ abstract type Location end
 mutable struct Scene
     locations::Vector{Location}
     prize::Location
+    utterance::String
 end
+
+Scene(locations, prize) = Scene(locations, prize, "")
 
 # --- LoB PROBLEM SPECIFICATION ---
 @enum DEPTH close=5 mid=10 far=15

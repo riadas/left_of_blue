@@ -10,13 +10,15 @@ end
 global base_syntax = Dict(
     Wall =>   "location.depth == genDEPTH", # | lib_at Wall COLOR
     Corner => "location.wall1.depth genComparison location.wall2.depth",
+    SpecialCorner => "location.wall1.depth genComparison location.wall2.depth",
     Spot =>   "true",
-    Whole =>  "true", 
+    Whole =>  "location.coral.x != 0", # geometry match
 )
 
 global base_semantics = Dict(
     Wall =>   "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
     Corner => "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
+    SpecialCorner => "gen{arg2} genComparison arg2", # | lib_at Wall COLOR
     Spot =>   "genInt genComparison genInt",
     Half =>  "genInt genComparison genInt"
 )
@@ -35,6 +37,8 @@ function update_semantics_cfg(current_semantics_cfg, function_signature::Functio
         current_semantics_cfg[Corner] = new_cfg
     elseif first_arg_type == Corner 
         current_semantics_cfg[Wall] = new_cfg
+    elseif first_arg_type == SpecialCorner 
+        current_semantics_cfg[SpecialCorner] = new_cfg
     end
 
     return current_semantics_cfg
@@ -43,6 +47,20 @@ end
 function generate_semantics(function_signature::Function, current_semantics_cfg::Dict)
     first_arg_type = function_signature.arg_types[1]
     cfg = current_semantics_cfg[first_arg_type]
+
+    if length(function_signature.arg_types) == 3 
+        index_pairs = [[1, 2], [1, 3]]
+        partial_semantics = []
+        for index_pair in index_pairs 
+            partial_arg_names = map(i -> function_signature.arg_names[i], index_pair)
+            partial_arg_types = map(i -> function_signature.arg_types[i], index_pair)
+            partial_function_signature = Function(function_signature.name, partial_arg_names, partial_arg_types, "")
+            s = generate_semantics(partial_function_signature, current_semantics_cfg)
+            push!(partial_semantics, s)
+        end
+
+        return "$(partial_semantics[1]) && $(partial_semantics[2])"
+    end
 
     option_strings = split(cfg, " | ")
     options = []
@@ -54,7 +72,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
             lib_function_arg_types = components[2:end]
             argument_expressions = []
             
-            if first_arg_type in [Wall, Corner]
+            if first_arg_type in [Wall, Corner, SpecialCorner]
                 if function_signature.arg_types[end] != eval(Meta.parse(lib_function_arg_types[end]))
                     continue
                 end
@@ -62,7 +80,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
 
             arg_expressions = []
             for i in 1:length(lib_function_arg_types)
-                if first_arg_type in [Wall, Corner] && (i == length(lib_function_arg_types))
+                if first_arg_type in [Wall, Corner, SpecialCorner] && (i == length(lib_function_arg_types))
                     push!(arg_expressions, function_signature.arg_names[end])
                 else
                     arg_type = lib_function_arg_types[i]
@@ -179,6 +197,10 @@ function genCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}
     "location"
 end
 
+function genSpecialCorner_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
+    "location"
+end
+
 function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
     if rect 
         rand(["close", "far"])
@@ -188,7 +210,7 @@ function genDEPTH_syntax(arg_names::Vector{String}, arg_types::Vector{DataType};
 end
 
 function genCOLOR_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
-    rand(["blue", "white"])
+    rand(["blue", "white"]) # , "red"
 end
 
 function genSpot_syntax(arg_names::Vector{String}, arg_types::Vector{DataType}; rect=true, shift=0)
@@ -224,7 +246,7 @@ function genWall_semantics(arg_names::Vector{String}, arg_types::Vector{DataType
                         "prev($(arg_name), locations).wall2", 
                         "next($(arg_name), locations).wall1",
                         "next($(arg_name), locations).wall2"])
-    elseif type == Corner
+    elseif type == Corner || type == SpecialCorner
         choice = rand(["$(arg_name).wall1",
                         "$(arg_name).wall2"])
     end
@@ -244,14 +266,26 @@ function genCorner_semantics(arg_names::Vector{String}, arg_types::Vector{DataTy
     choice
 end
 
+function genSpecialCorner_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
+    arg_name = arg_names[1]
+    type = arg_types[1]
+    choice = rand(["$(arg_name)"])
+    choice
+end
+
 function genDEPTH_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
     wall = genWall_semantics(arg_names, arg_types)
     "$(wall).depth"
 end
 
 function genCOLOR_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})
-    wall = genWall_semantics(arg_names, arg_types)
-    "$(wall).color"
+    if arg_types[1] == Wall 
+        wall = genWall_semantics(arg_names, arg_types)
+        "$(wall).color"
+    elseif arg_types[1] == SpecialCorner
+        "$(arg_names[1]).color"
+    end
+
 end
 
 function genSpot_semantics(arg_names::Vector{String}, arg_types::Vector{DataType})

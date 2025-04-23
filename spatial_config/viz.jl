@@ -54,6 +54,12 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
         location = [(5 - scaled_w)/2 + offset, 2.5]
     elseif prize_location == "far-right"
         location = [(5 - scaled_w)/2 + scaled_w - offset, 2.5]
+    elseif prize_location == "far-left-corner"
+        location = [(5-scaled_w)/2 + scaled_w - offset, (5-scaled_l)/2 + offset]
+    elseif prize_location == "far-right-corner"
+        location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + offset]
+    elseif prize_location == "" 
+        location = [(5-scaled_w)/2 + offset, (5-scaled_l)/2 + scaled_l - offset]
     end
     scatter!(location[1:1], location[2:2], markershape=:star5, markersize=7, markercolor="red", markerstrokecolor="red")
 
@@ -78,10 +84,16 @@ function visualize_left_of_blue_problem(config, save_filepath="", display2D=true
 end
 
 function visualize_left_of_blue_results(config, locations_to_search, save_filepath="")
-    println("visualize_left_of_blue_results")
-    println(config)
-    println(locations_to_search)
-    println(save_filepath)
+    # println("visualize_left_of_blue_results")
+    # println(config)
+    # println(locations_to_search)
+    # println(save_filepath)
+    scene = define_spatial_reasoning_problem(config)
+    all_corners = map(x -> repr(x), filter(y -> y isa Corner, scene.locations))
+    all_walls = map(x -> repr(x), filter(y -> y isa Wall, scene.locations))
+
+    locations_to_search_reprs = map(x -> repr(x), locations_to_search)
+
     p = visualize_left_of_blue_problem(config, "")
 
     l = config["length"]
@@ -98,114 +110,34 @@ function visualize_left_of_blue_results(config, locations_to_search, save_filepa
     accent_width = 0.05
     offset = accent_width * 4
 
-    if length(locations_to_search) == 4 
-        if locations_to_search[1] isa Wall 
-            positions = [
-                (2.5, (5-scaled_l)/2 + scaled_l - offset * 2),
-                (2.5, (5-scaled_l)/2 + offset * 2),
-                ((5-scaled_w)/2 + offset * 2, 2.5),
-                ((5-scaled_w)/2 + scaled_w - offset * 2, 2.5),
-            ]
-        else
-            positions = [
-                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + offset * 2),
-                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
-            ]
-        end
+    corner_positions = [
+        ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+        ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+        ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
+        ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + offset * 2),
+    ]
 
-        labels = ["0.25", "0.25", "0.25", "0.25"]
-        for i in 1:length(labels)
-            label = labels[i]
-            label_x, label_y = positions[i]
-            # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
-            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-        end
+    wall_positions = [
+        ((5-scaled_w)/2 + offset * 2, 2.5),
+        (2.5, (5-scaled_l)/2 + scaled_l - offset * 2),
+        ((5-scaled_w)/2 + scaled_w - offset * 2, 2.5),
+        (2.5, (5-scaled_l)/2 + offset * 2),
+    ]
 
-    elseif length(locations_to_search) == 1 
-        location = locations_to_search[1]
-        label = "1.0"
-        if location isa Wall 
-            # plot at center of blue wall
-            if location.color == blue 
-                label_x = 2.5
-                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
-                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
-                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-            elseif prize_location == "far-left"
-                label_x = (5 - scaled_w)/2 + offset * 3 
-                label_y = 2.5
-                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-            elseif prize_location == "far-right"
-                label_x = (5 - scaled_w)/2 + scaled_w - offset * 3 
-                label_y = 2.5
-                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-            end
-        else
-            if prize_location == "left"
-                # plot at corner of blue wall
-                label_x = (5 - scaled_w)/2 + offset * 2
-                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
-                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
-                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-            elseif prize_location == "right"
-                # plot at corner of blue wall
-                label_x = (5 - scaled_w)/2 + scaled_w + offset * 2
-                label_y = (5-scaled_l)/2 + scaled_l - offset * 2
-                # scatter!(width_label_x, width_label_y, markercolor="red", markerstrokecolor="red")
-                p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-            end
-        end
+    if locations_to_search[1] isa Corner 
+        idxs = unique(vcat(map(x -> findall(y -> y == x, all_corners), locations_to_search_reprs)...))
+        label_positions = map(i -> corner_positions[i], idxs)
+    else
+        idxs = unique(vcat(map(x -> findall(y -> y == x, all_walls), locations_to_search_reprs)...))
+        label_positions = map(i -> wall_positions[i], idxs)
+    end
 
-    elseif length(locations_to_search) == 3
-        positions = [
-            ((5-scaled_w)/2 + offset * 3, 2.5),
-            ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
-            (2.5, (5-scaled_l)/2 + offset * 3)
-        ]
-        labels = ["0.33", "0.33", "0.33"]
-        for i in 1:length(labels)
-            label = labels[i]
-            label_x, label_y = positions[i]
-            # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
-            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-        end
-    elseif length(locations_to_search) == 2 
-        if prize_location == "left"
-            positions = [
-                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
-            ]
-        elseif prize_location == "right"
-            positions = [
-                ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + offset * 2),
-                ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
-            ]
-        elseif prize_location == "center"
-            positions = [
-                (2.5, (5-scaled_l)/2 + scaled_l - offset * 2),
-                (2.5, (5-scaled_l)/2 + offset * 2),
-            ]
-        elseif prize_location == "far-left"
-            positions = [
-                ((5-scaled_w)/2 + offset * 3, 2.5),
-                ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
-            ]
-        elseif prize_location == "far-right"
-            positions = [
-                ((5-scaled_w)/2 + offset * 3, 2.5),
-                ((5-scaled_w)/2 - offset * 3 + scaled_w, 2.5),
-            ]
-        end
-
-        labels = ["0.5", "0.5"]
-        for i in 1:length(labels)
-            label = labels[i]
-            label_x, label_y = positions[i]
-            # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
-            p = annotate!.(label_x, label_y, text.(label, :green, 10) )
-        end
+    labels = map(x -> "$(round(1/length(locations_to_search), digits=2))", 1:length(locations_to_search))
+    for i in 1:length(labels)
+        label = labels[i]
+        label_x, label_y = label_positions[i]
+        # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
+        p = annotate!.(label_x, label_y, text.(label, :green, 10) )
     end
 
     if save_filepath != ""
@@ -217,9 +149,9 @@ end
 
 function visualize_spatial_lang_problem(config, save_filepath="")
     function plot_cube(p, center_shift, config_shift, col=nothing)
-        println(p)
-        println(center_shift)
-        println(col)
+        # println(p)
+        # println(center_shift)
+        # println(col)
         xp = [0, 0, 0, 0, 1, 1, 1, 1] .+ center_shift[1] .+ config_shift
         yp = [0, 1, 0, 1, 0, 0, 1, 1] .+ center_shift[2]
         zp = [0, 0, 1, 1, 1, 0, 0, 1] .+ center_shift[3]
@@ -288,6 +220,119 @@ function visualize_spatial_lang_problem(config, save_filepath="")
     end
 
     return p    
+end
+
+function visualize_triangle_problem(config, save_filepath="")
+    # set up grid
+    p = plot(0:5,0:5, linecolor="white", grid=false, axis=([], false), legend=false)
+
+    p = plot!(p, [1.5, 2.5], [0.5, 4.5], color="black")
+    p = plot!(p, [1.5, 3.5], [0.5, 0.5], color="black")
+    p = plot!(p, [2.5, 3.5], [4.5, 0.5], color="black")
+    p = scatter!(p, (2.5, 1.83))
+
+    prize_left_side = config["prize_left_side"]
+    prize_right_side = config["prize_right_side"]
+
+    prize_location = nothing
+    if prize_left_side == prize_right_side 
+        prize_location = (2.5, 4)
+    elseif prize_left_side == "close"
+        prize_location = (3.25, 0.75)
+    elseif prize_left_side == "far"
+        prize_location = (1.75, 0.75)
+    end
+    p = scatter!(p, prize_location, markershape=:star5, markersize=7, markercolor="red", markerstrokecolor="red")
+
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
+    return p
+end
+
+function visualize_triangle_results(config, locations_to_search, save_filepath="")
+    p = visualize_triangle_problem(config)
+
+    scene = define_triangle_problem(config)
+    all_corners = map(x -> repr(x), filter(y -> y isa Corner, scene.locations))
+    locations_to_search_reprs = map(x -> repr(x), locations_to_search)
+
+    idxs = map(x -> findall(y -> y == x, all_corners)[1], locations_to_search_reprs)
+    label_locations = [(2, 1), (2.5, 3.5), (3, 1)]
+
+    labels = map(x -> "$(round(1/length(locations_to_search), digits=2))", 1:length(locations_to_search))
+    positions = map(i -> label_locations[i], idxs)
+    for i in 1:length(labels)
+        label = labels[i]
+        label_x, label_y = positions[i]
+        # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
+        p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+    end
+
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
+    return p
+end
+
+function visualize_special_corner_problem(config, save_filepath="")
+    config["length"] = 2
+    config["width"] = 3
+    config["accent_wall"] = false 
+    config["prize"] = ""
+    p = visualize_left_of_blue_problem(config)
+
+    scaled_l = 4 
+    scaled_w = 8/3
+    offset = 0.2
+
+    p = scatter!(p, ((5 - scaled_w)/2, (5-scaled_l)/2 + scaled_l), color="pink")
+    p = scatter!(p, ((5 - scaled_w)/2 + scaled_w, (5-scaled_l)/2), color="green")
+
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
+    return p
+end
+
+function visualize_special_corner_results(config, locations_to_search, save_filepath="")
+    config["length"] = 2
+    config["width"] = 3 
+    config["accent_wall"] = false 
+    config["prize"] = ""
+    p = visualize_special_corner_problem(config)
+
+    scaled_l = 4 
+    scaled_w = 8/3
+    offset = 0.2
+
+    if length(locations_to_search) == 2 
+        positions = [
+            ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+            ((5 - scaled_w)/2 + scaled_w - offset * 2, (5-scaled_l)/2 + offset * 2),
+        ]
+    elseif length(locations_to_search) == 1 
+        positions = [
+            ((5 - scaled_w)/2 + offset * 2, (5-scaled_l)/2 + scaled_l - offset * 2),
+        ]    
+    end
+    labels = map(x -> "$(round(1/length(locations_to_search), digits=2))", 1:length(locations_to_search))
+
+    for i in 1:length(labels)
+        label = labels[i]
+        label_x, label_y = positions[i]
+        # scatter!([label_x], [label_y], markercolor="red", markerstrokecolor="red")
+        p = annotate!.(label_x, label_y, text.(label, :green, 10) )
+    end
+
+    if save_filepath != ""
+        savefig(save_filepath)
+    end
+
+    return p
 end
 
 function visualize_spatial_lang_results(config, locations_to_search, save_filepath="")

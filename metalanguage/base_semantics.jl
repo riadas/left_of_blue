@@ -3,7 +3,10 @@ abstract type Location end
 mutable struct Scene
     locations::Vector{Location}
     prize::Location
+    utterance::String
 end
+
+Scene(locations, prize) = Scene(locations, prize, "")
 
 # --- LoB PROBLEM SPECIFICATION ---
 @enum DEPTH close=5 mid=10 far=15
@@ -12,7 +15,7 @@ Base.:(-)(a::DEPTH, b::DEPTH) = Int(a) - Int(b)
 Base.:(*)(a::DEPTH, b::DEPTH) = Int(a) * Int(b)
 Base.:(/)(a::DEPTH, b::DEPTH) = Int(a) / Int(b)
 
-@enum COLOR white blue
+@enum COLOR white blue red
 
 Base.:(==)(a::DEPTH, b::DEPTH) = Int(a) == Int(b)
 Base.:(!=)(a::DEPTH, b::DEPTH) = Int(a) != Int(b)
@@ -29,6 +32,12 @@ end
 mutable struct Corner <: Location
     wall1::Wall
     wall2::Wall
+end
+
+mutable struct SpecialCorner <: Location 
+    wall1::Wall 
+    wall2::Wall 
+    color::COLOR
 end
 
 # --- SPATIAL LANG. UNDERSTANDING PROBLEM SPECIFICATION ---

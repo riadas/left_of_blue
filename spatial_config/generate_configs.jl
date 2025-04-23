@@ -4,7 +4,7 @@ using Combinatorics
 # generate different left of blue configurations
 dimension_ratios = [(2,3), (1,1)]
 accent_walls = [true, false]
-prize_specs = ["left", "right", "center", "far-left", "far-right"]
+prize_specs = ["left", "right", "center", "far-left", "far-right", "far-left-corner", "far-right-corner"]
 
 for ratio in dimension_ratios
     for accent_wall in accent_walls
@@ -31,8 +31,23 @@ for shift in [-2, 0, 2]
         config["type"] = "spatial_lang_test"
         config["shift"] = shift
         config["left"] = left
+        config["utterance"] = ""
 
         open("""spatial_config/configs/spatial_lang_test_left_$(left)_shift_$(shift).json""", "w") do f
+            JSON.print(f, config)
+        end
+
+        # add natural language instructions
+        left_instruction = "Put the blue object left of the red object"
+        right_instruction = "Put the blue object right of the red object"
+        instructions = Dict(["left" => left_instruction, "right" => right_instruction])
+        if left 
+            config["utterance"] = instructions["left"]
+        else
+            config["utterance"] = instructions["right"]
+        end
+
+        open("""spatial_config/configs/spatial_lang_test_left_$(left)_shift_$(shift)_utterance_true.json""", "w") do f
             JSON.print(f, config)
         end
     end
@@ -55,11 +70,45 @@ for prize_left_color in prize_left_colors
                 config["diagonal"] = diagonal 
                 config["order"] = order
                 config["diagonal_type"] = diagonal_type
-    
+                config["utterance"] = ""
+
                 open("""spatial_config/configs/green_red_test_left_color_$(prize_left_color)_diagonal_$(diagonal)_order_$(join(order, "_")).json""", "w") do f
                     JSON.print(f, config)
+                end
+
+                # add natural language labels 
+                labels = Dict([
+                    "directional" => """The red is $(prize_left_color == "green" ? "right" : "left") of the green""",
+                    "neutral" => "The red is next to the green",
+                    "prettier" => "The red is prettier than the green"
+                ])
+                for k in keys(labels)
+                    config["utterance"] = labels[k]
+                    open("""spatial_config/configs/green_red_test_left_color_$(prize_left_color)_diagonal_$(diagonal)_order_$(join(order, "_"))_utterance_$(k).json""", "w") do f
+                        JSON.print(f, config)
+                    end
                 end
             end
         end
     end
+end
+
+# generate triangle configs
+triangle_prize_locations = [("close", "close"), ("close", "far"), ("far", "close")]
+for tup in triangle_prize_locations 
+    config = Dict()
+    config["type"] = "triangle"
+    config["prize_left_side"] = tup[1]
+    config["prize_right_side"] = tup[2]
+
+    open("""spatial_config/configs/triangle_room_$(tup[1])_$(tup[2]).json""", "w") do f
+        JSON.print(f, config)
+    end
+end
+
+# generate rectangular rooms with colored corners ("SpecialCorner") configs
+config = Dict()
+config["type"] = "special_corner"
+open("""spatial_config/configs/rect_room_special_corner.json""", "w") do f
+    JSON.print(f, config)
 end
