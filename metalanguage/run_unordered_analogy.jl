@@ -29,7 +29,7 @@ categories = [[Wall, Corner, SpecialCorner, DEPTH, COLOR], [Spot], [Half, Whole]
 
 function test()
     at_function = Function("at", ["location_arg", "color_arg"], [Wall, COLOR], "")
-    at_function_special_corner = Function("at", ["location_arg", "color_arg"], [SpecialCorner, COLOR], "")
+    at_function_special_corner = Function("at", ["location_special_arg", "color_arg"], [SpecialCorner, COLOR], "")
 
     my_left_function = Function("my_left", ["location_arg", "depth_arg"], [Corner, DEPTH], "")
     left_of_function = Function("left_of", ["location_arg", "color_arg"], [Corner, COLOR], "")
@@ -57,7 +57,7 @@ function test()
 
     all_function_sigs = [
                         at_function, 
-                        # at_function_special_corner,
+                        at_function_special_corner,
                         my_left_function,
                         my_right_function,
                         my_left_function_spot,
@@ -72,8 +72,8 @@ function test()
                         right_of_function_whole,
                         left_of_function_wall,
                         right_of_function_wall,
-                        # left_of_function_with_depth,
-                        # right_of_function_with_depth
+                        left_of_function_with_depth,
+                        right_of_function_with_depth
                     ] 
 
     sig_keys = map(sig -> split(format_new_function_string(sig), "\n")[1], all_function_sigs)
@@ -85,6 +85,10 @@ function test()
     prev_best_scores = Dict(map(x -> x => -1.0, 1:length(categories)))
     name_biases = Dict()
     max_language_augmented_AST_size = 0
+
+    # compute initial results, before any function learning
+    compute_initial_results(category_names, all_function_sigs, prev_best_scores, base_semantics_str, base_syntax)
+
     while length(sig_dict) != 0
         println("START OF LOOP")
         println(length(sig_dict))
@@ -281,7 +285,7 @@ function test()
             # save results
             ## create new combined stage folder
             combined_stage_count = length(filter(x -> !occursin("language_augmented", x), readdir("$(combined_results_dir)")))
-            save_folder_name = "stage_$(lpad(string(combined_stage_count + 1), 2, '0'))" 
+            save_folder_name = "stage_$(lpad(string(combined_stage_count), 2, '0'))" 
             save_dir_path_combined = "$(combined_results_dir)/$(save_folder_name)"
             if !isdir(save_dir_path_combined)
                 mkdir(save_dir_path_combined)
@@ -308,6 +312,9 @@ function test()
 
         # abstraction/analogy loop -- same_name_different_args and different_name_same_args
         num_completed_sigs = length(completed_sigs)
+        println("completed_sigs")
+        println(completed_sigs)
+        completed_sigs = filter(x -> !(SpecialCorner in x.arg_types) && length(x.arg_types) < 3, completed_sigs)
         while completed_sigs != []
             println("ANALOGY LOOP")
             println(length(completed_sigs))
@@ -342,22 +349,24 @@ function test()
             abstraction_signals = Dict(map(name -> name => [], signal_names))
             for sig_key in sig_keys 
                 sig = sig_dict[sig_key]
-                if sig.name == completed_name 
-                    push!(abstraction_signals["same_name_different_args"], sig_key)
-                else
-                    if sig.arg_types == completed_sig.arg_types 
-                        push!(abstraction_signals["different_name_same_args"], sig_key)
-                    end
-
-                    # different but similar name
-                    name_parts = filter(x -> length(x) > 2, split(completed_name, "_"))
-                    if name_parts != []
-                        name_core = name_parts[1]
-                        if name_core == completed_name_core 
-                            push!(abstraction_signals["different_name_different_args"], sig_key)
+                if length(sig.arg_types) < 3
+                    if sig.name == completed_name 
+                        push!(abstraction_signals["same_name_different_args"], sig_key)
+                    else
+                        if sig.arg_types == completed_sig.arg_types 
+                            push!(abstraction_signals["different_name_same_args"], sig_key)
                         end
-                    end
 
+                        # different but similar name
+                        name_parts = filter(x -> length(x) > 2, split(completed_name, "_"))
+                        if name_parts != []
+                            name_core = name_parts[1]
+                            if name_core == completed_name_core 
+                                push!(abstraction_signals["different_name_different_args"], sig_key)
+                            end
+                        end
+
+                    end
                 end
             end
 
@@ -372,7 +381,7 @@ function test()
                 def_includes_coord_exprs = foldl(|, map(x -> occursin(x, completed_sig.definition), coord_exprs),init=false)
             end
 
-            if def_includes_coord_exprs 
+            if def_includes_coord_exprs
                 completed_definition = completed_sig.definition 
 
                 println(completed_sig)
@@ -699,6 +708,8 @@ function coordExpressions(function_sig)
             names = map(i -> arg_names[i], idxs)
 
             vcat(map(name -> "prev($(name), locations).wall1", names), map(name -> "next($(name), locations).wall2", names))
+        else
+            []
         end
     else
         []
@@ -749,7 +760,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     using_temp_semantics = false
     for config_name in config_names
         # all non-control input spatial problems
-        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) && !occursin("triangle", config_name) && !occursin("special_corner", config_name) && !occursin("-corner", config_name) # && !occursin("utterance", config_name)
+        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) # && !occursin("utterance", config_name)
             # println("--- CONFIG NAME")
             # println(config_name)            
             # if occursin("utterance", config_name)
@@ -792,6 +803,11 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 new_func = nothing
                 if occursin("green", config_name) # red-green test
                     new_func, new_program = translate_from_NL_and_image(scene, all_functions, max_language_augmented_AST_size)
+                elseif occursin("room", config_name)
+                    _, new_program = translate_from_NL(scene, all_functions, max_language_augmented_AST_size)
+                    if new_program != ""
+                        programs = map(x -> "$(x) $(new_program)", programs)
+                    end
                 else # spatial lang. test
                     new_func, new_program = translate_from_NL(scene, all_functions, max_language_augmented_AST_size)
                 end
@@ -840,6 +856,8 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                     program = "location isa Wall && $(program)"
                 elseif scene.prize isa Corner
                     program = "location isa Corner && $(program)"
+                elseif scene.prize isa SpecialCorner 
+                    program = "location isa SpecialCorner && $(program)"
                 end
                 push!(formatted_programs, program)
             end
@@ -907,7 +925,6 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                         search_locations[config_name] = res
                     end 
                 end
-
             else
                 programs_and_results = [zip(programs, results)...]
                 programs_and_results = filter(tup -> scene.prize in tup[2], programs_and_results)
@@ -927,12 +944,44 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 println("temp_program")
                 println(temp_program)
                 # println(locations_to_search)
-                if occursin("spatial", config_name) && !using_temp_semantics && (occursin("left", best_program) || occursin("right", best_program)) 
-                    scores[config_name] = 1/length(locations_to_search) * alpha
+                if occursin("modified", config_name)
+                    old_locations = scene.locations
+                    special_corner1, special_corner2 = filter(x -> x isa SpecialCorner, old_locations)
+                    corner1, corner2 = filter(x -> x isa Corner, old_locations)
+
+                    wall1, wall2, wall3, wall4 = filter(x -> x isa Wall, old_locations)
+
+                    special_corner1.wall1 = wall4 
+                    special_corner1.wall2 = wall1 
+
+                    special_corner2.wall1 = wall3 
+                    special_corner2.wall2 = wall4
+
+                    corner1.wall1 = wall1 
+                    corner2.wall2 = wall2 
+
+                    corner2.wall1 = wall2 
+                    corner2.wall2 = wall3
+
+                    global locations = [wall1, corner1, wall2, corner2, wall3, special_corner2, wall4, special_corner1]
+                    new_prize = special_corner1
+                    global x = eval(Meta.parse("location -> location isa SpecialCorner && $(best_program)"))
+                    r = @eval filter($x, $locations) 
+
+                    if new_prize in r 
+                        scores[config_name] = 1.0
+                    else
+                        scores[config_name] = 0.0
+                    end
+                    search_locations[config_name] = r
                 else
-                    scores[config_name] = 1/length(locations_to_search)
+                    if occursin("spatial", config_name) && !using_temp_semantics && (occursin("left", best_program) || occursin("right", best_program)) 
+                        scores[config_name] = 1/length(locations_to_search) * alpha
+                    else
+                        scores[config_name] = 1/length(locations_to_search)
+                    end
+                    search_locations[config_name] = locations_to_search    
                 end
-                search_locations[config_name] = locations_to_search
 
             end
         end
@@ -948,14 +997,19 @@ function save_results(sig_key, level_best_info, category_assignment, save_folder
     split_stage_count = length(readdir("$(split_results_dir)/$(category_name)"))
     if !new_split_folder_created[category_name]
         println(category_name)
-        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"
+        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count), 2, '0'))"
+        if occursin("_language_augmented_", save_dir_path_split)
+            num = split(save_dir_path_split, "_language_augmented_")[end]
+            save_dir_path_split = "$(save_dir_path_split)_language_augmented_$(num)"
+        end
+
         if !isdir(save_dir_path_split)
             mkdir(save_dir_path_split)
         end
         new_split_folder_created[category_name] = true
-        push!(combined_to_split_mapping, (save_folder_name, "$(category_name)/stage_$(lpad(string(split_stage_count + 1), 2, '0'))"))
+        push!(combined_to_split_mapping, (save_folder_name, "$(category_name)/stage_$(lpad(string(split_stage_count), 2, '0'))"))
     else
-        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count), 2, '0'))"
+        save_dir_path_split = "metalanguage/results/unordered_analogy/by_category/$(category_name)/stage_$(lpad(string(split_stage_count - 1), 2, '0'))"
     end
 
     for save_dir_path in [save_dir_path_combined, save_dir_path_split]
@@ -978,7 +1032,13 @@ function save_results(sig_key, level_best_info, category_assignment, save_folder
             save_filepath = "$(image_dir)/$(save_filename)"
             println(save_filepath)
             if category_name == "left_of_blue"
-                p = visualize_left_of_blue_results(config, locations, save_filepath)
+                if occursin("special_corner", config_name)
+                    p = visualize_special_corner_results(config, locations, save_filepath)
+                elseif occursin("triangle", config_name)
+                    p = visualize_triangle_results(config, locations, save_filepath)
+                else
+                    p = visualize_left_of_blue_results(config, locations, save_filepath)
+                end
             elseif category_name == "spatial_lang_test"
                 p = visualize_spatial_lang_results(config, locations, save_filepath)
             elseif category_name == "red_green_test"
@@ -1004,36 +1064,60 @@ function save_results(sig_key, level_best_info, category_assignment, save_folder
                 global scene = define_spatial_reasoning_problem(config_filepath)
                 idxs = map(x -> findall(l -> l == x, scene.locations)[1], locations)
                 labels = map(i -> config["order"][i], idxs)
-                push!(accuracies, (config_name, round(length(filter(x -> x == "M", labels))/length(labels), digits=3)))
+                push!(accuracies, (category_name, config_name, round(length(filter(x -> x == "M", labels))/length(labels), digits=3)))
             end
+        else
+            accuracies = map(k -> (category_name, k, round(1/length(best_locations_to_search[k]), digits=3)), sort([keys(best_locations_to_search)...]))
+        end
+
+        # write accuracies to file
+        if save_dir_path == save_dir_path_split 
             open("$(number_dir)/accuracies.txt", "w") do f 
                 write(f, join(map(x -> string(x), accuracies), "\n"))
             end
         else
-            accuracies = map(k -> (k, round(1/length(best_locations_to_search[k]), digits=3)), sort([keys(best_locations_to_search)...]))
-            open("$(number_dir)/accuracies.txt", "w") do f 
-                write(f, join(map(x -> string(x), accuracies), "\n"))
+            open("$(number_dir)/accuracies.txt", "w+") do f 
+                t = read(f, String)
+                lines = split(t, "\n")
+                if occursin("($(category_name), ", t)
+                    lines = filter(x -> !occursin("($(category_name), "), lines)
+                end
+                new_lines = [lines..., map(x -> string(x), accuracies)...]
+                write(f, join(new_lines, "\n"))
             end
         end
 
         ### save locations to search for each spatial config (and corresponding M/R/D labels, for red-green test)
-        open("$(number_dir)/locations_to_search.txt", "w") do f
-            if category_name == "red_green_test"
-                results = []
-                config_names = sort([keys(best_locations_to_search)...])
-                for config_name in config_names 
-                    locations = best_locations_to_search[config_name]
+        if category_name == "red_green_test"
+            results = []
+            config_names = sort([keys(best_locations_to_search)...])
+            for config_name in config_names 
+                locations = best_locations_to_search[config_name]
 
-                    config_filepath = "spatial_config/configs/$(config_name)"
-                    config = JSON.parsefile(config_filepath)
-                    scene = define_spatial_reasoning_problem(config_filepath)
-                    idxs = map(x -> findall(l -> l == x, scene.locations)[1], locations)
-                    labels = map(i -> config["order"][i], idxs)
-                    push!(results, string((config_name, labels, locations)))
-                end
+                config_filepath = "spatial_config/configs/$(config_name)"
+                config = JSON.parsefile(config_filepath)
+                scene = define_spatial_reasoning_problem(config_filepath)
+                idxs = map(x -> findall(l -> l == x, scene.locations)[1], locations)
+                labels = map(i -> config["order"][i], idxs)
+                push!(results, string((category_name, config_name, labels, locations)))
+            end
+        else
+            results = map(k -> string((category_name, k, best_locations_to_search[k])), sort([keys(best_locations_to_search)...]))
+        end
+
+        if save_dir_path == save_dir_path_split 
+            open("$(number_dir)/locations_to_search.txt", "w") do f
                 write(f, join(results, "\n"))
-            else
-                write(f, join(map(k -> string((k, best_locations_to_search[k])), sort([keys(best_locations_to_search)...])), "\n"))
+            end
+        else
+            open("$(number_dir)/locations_to_search.txt", "w+") do f
+                t = read(f, String)
+                lines = split(t, "\n")
+                if occursin("($(category_name), ", t)
+                    lines = filter(x -> !occursin("($(category_name), "), lines)
+                end
+                new_lines = [lines..., results...]
+                write(f, join(new_lines, "\n"))
             end
         end
 
@@ -1041,9 +1125,67 @@ function save_results(sig_key, level_best_info, category_assignment, save_folder
         num_solved = count(tup -> tup[2] == 1.0, accuracies)
         percentage_solved = round(num_solved/length(accuracies), digits=3)
 
-        open("$(number_dir)/overall_benchmark_accuracy.txt", "w") do f 
-            write(f, string(percentage_solved))
+        if save_dir_path == save_dir_path_split 
+            open("$(number_dir)/overall_benchmark_accuracy.txt", "w") do f 
+                write(f, "$(category_name) => $(percentage_solved)")
+            end
+        else
+            open("$(number_dir)/overall_benchmark_accuracy.txt", "w+") do f 
+                t = read(f, String)
+                lines = split(t, "\n")
+                if occursin("$(category_name) =>", t)
+                    lines = filter(x -> !occursin("$(category_name) =>", x), lines)
+                    new_lines = [lines..., "$(category_name) => $(percentage_solved)"]
+                    write(f, join(new_lines, "\n"))
+                else
+                    write(f, "$(t)\n$(category_name) => $(percentage_solved)")
+                end
+            end
         end
+    end
+end
+
+
+function compute_initial_results(category_names, all_function_sigs, prev_best_scores, base_semantics_str, base_syntax)
+    total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, base_semantics_str, base_syntax, 0, all_function_sigs)
+
+    # save results before any function learning
+    ## create new combined stage folder
+    combined_stage_count = length(filter(x -> !occursin("language_augmented", x), readdir("$(combined_results_dir)")))
+    save_folder_name = "stage_$(lpad(string(combined_stage_count), 2, '0'))" 
+    save_dir_path_combined = "$(combined_results_dir)/$(save_folder_name)"
+    if !isdir(save_dir_path_combined)
+        mkdir(save_dir_path_combined)
+    end
+
+    new_split_folder_created = Dict(map(n -> n => false, category_names))
+    for c in 1:3
+        # category_names = ["left_of_blue", "spatial_lang_test", "red_green_test"]
+        category_scores = Dict()
+        category_search_locations = Dict()
+        for k in keys(scores)
+            if c == 1
+                if occursin("room", k)
+                    category_scores[k] = scores[k]
+                    category_search_locations[k] = search_locations[k]
+                end
+            elseif c == 2 
+                if occursin("spatial", k)
+                    category_scores[k] = scores[k]
+                    category_search_locations[k] = search_locations[k]
+                end
+            elseif c == 3 
+                if occursin("green", k)
+                    category_scores[k] = scores[k]
+                    category_search_locations[k] = search_locations[k]
+                end
+            end
+        end
+        info = Dict()
+        category_total_score = sum([values(category_scores)...])
+        prev_best_scores[c] = category_total_score
+        info["$(c)"] = ("", category_total_score, category_scores, category_search_locations)
+        save_results("$(c)", info, c, save_folder_name, save_dir_path_combined, new_split_folder_created, "")
     end
 end
 

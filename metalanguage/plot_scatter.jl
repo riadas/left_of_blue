@@ -163,6 +163,10 @@ vals4 = [
 
     (0.25, 0.286), # LoB, square, corner, blue wall; high comprehension low production group
 
+    (0.5, 0.45),
+    (1, 0.55),
+    (1, 0.77),
+    (1, 0.72),
 ]
 
 vals4_1 = [
@@ -181,6 +185,10 @@ vals4_1 = [
 
     (0.25, 0.286), # LoB, square, corner, blue wall; high comprehension low production group
 
+    (0.5, 0.45),
+    (0.5, 0.55),
+    (0.5, 0.77),
+    (0.5, 0.72),
 ]
 
 vals4_3 = [
@@ -199,6 +207,10 @@ vals4_3 = [
 
     (0.25, 0.286), # LoB, square, corner, blue wall; high comprehension low production group
 
+    (0.5, 0.45),
+    (0.5, 0.55),
+    (0.5, 0.77),
+    (0.5, 0.72),
 ]
 
 vals4_5 = [
@@ -217,6 +229,10 @@ vals4_5 = [
 
     (0.25, 0.286), # LoB, square, corner, blue wall; high comprehension low production group
 
+    (0.5, 0.45),
+    (1, 0.55),
+    (1, 0.77),
+    (1, 0.72),
 ]
 
 # relative plot 

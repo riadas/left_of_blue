@@ -1,1 +1,1 @@
-0.75
+red_green_test => 0.0
