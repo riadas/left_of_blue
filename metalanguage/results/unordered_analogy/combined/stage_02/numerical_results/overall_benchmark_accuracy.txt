@@ -1,2 +1,0 @@
-
-left_of_blue => 0.0

@@ -1,2 +1,0 @@
-
-red_green_test => 0.0

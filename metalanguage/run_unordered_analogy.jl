@@ -716,7 +716,7 @@ function coordExpressions(function_sig)
     end
 end
 
-function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions)
+function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions, test_configs=[], suffix="unordered_analogy")
     println("-- trying definition")
     println(definition)
     if !isnothing(function_sig)
@@ -729,15 +729,19 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
         new_semantics_str = level_base_semantics_str
     end
 
-    open("metalanguage/intermediate_outputs/intermediate_semantics_unordered_analogy.jl", "w+") do f 
+    open("metalanguage/intermediate_outputs/intermediate_semantics_$(suffix).jl", "w+") do f 
         write(f, new_semantics_str)
     end
-    include("intermediate_outputs/intermediate_semantics_unordered_analogy.jl")
+    include("intermediate_outputs/intermediate_semantics_$(suffix).jl")
 
     # generate lots of programs in the new language, and measure performance across suite of spatial configurations
     # if performance is higher than base language, save that program and its score
 
-    config_names = readdir("spatial_config/configs")
+    if test_configs != []
+        config_names = test_configs
+    else
+        config_names = readdir("spatial_config/configs")
+    end
     if category_assignment == 1 # LoB experiments
         config_names = filter(x -> occursin("room", x), config_names)
     elseif category_assignment == 2 # spatial lang. experiments
@@ -824,12 +828,12 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                         new_semantics_str = join([prefix, new_func_str, suffix], "\n")
                     else
                         new_semantics_str = join([new_semantics_str, new_func_str], "\n")
-                        open("metalanguage/intermediate_outputs/intermediate_semantics_unordered_analogy.jl", "w+") do f 
+                        open("metalanguage/intermediate_outputs/intermediate_semantics_$(suffix).jl", "w+") do f 
                             write(f, new_semantics_str)
                         end    
                     end
                     println(new_semantics_str)
-                    include("intermediate_outputs/intermediate_semantics_unordered_analogy.jl")
+                    include("intermediate_outputs/intermediate_semantics_$(suffix).jl")
                 
                     push!(programs, new_program)
                     programs = unique(programs)
@@ -1189,4 +1193,4 @@ function compute_initial_results(category_names, all_function_sigs, prev_best_sc
     end
 end
 
-test()
+# test()
