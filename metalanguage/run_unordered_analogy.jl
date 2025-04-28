@@ -717,8 +717,8 @@ function coordExpressions(function_sig)
 end
 
 function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions, test_configs=[], suffix="unordered_analogy")
-    println("-- trying definition")
-    println(definition)
+    # println("-- trying definition")
+    # println(definition)
     if !isnothing(function_sig)
         function_sig.definition = definition
         new_function_definition_str = format_new_function_string(function_sig)
@@ -765,8 +765,8 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     for config_name in config_names
         # all non-control input spatial problems
         if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) # && !occursin("utterance", config_name)
-            # println("--- CONFIG NAME")
-            # println(config_name)            
+            # # println("--- CONFIG NAME")
+            # # println(config_name)            
             # if occursin("utterance", config_name)
             #     t = replace(split(config_name, "utterance_")[end], ".json" => "")
             #     if !seen_utterance[t]
@@ -775,7 +775,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
             #         continue
             #     end
             # end
-            println(config_name)
+            # println(config_name)
             config_filepath = "spatial_config/configs/$(config_name)"
             config = JSON.parsefile(config_filepath)
 
@@ -832,26 +832,26 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                             write(f, new_semantics_str)
                         end    
                     end
-                    println(new_semantics_str)
+                    # println(new_semantics_str)
                     include("intermediate_outputs/intermediate_semantics_$(suffix).jl")
                 
                     push!(programs, new_program)
                     programs = unique(programs)
                     temp_program = new_program 
                     temp_func = new_func
-                    println("TEMP PROGRAM")
-                    println(temp_program)
-                    println("TEMP FUNC")
-                    println(temp_func)
+                    # println("TEMP PROGRAM")
+                    # println(temp_program)
+                    # println("TEMP FUNC")
+                    # println(temp_func)
                     using_temp_semantics = true
                 end
             end
 
             # exclude programs that don't include the input argument
-            # println(programs)
+            # # println(programs)
             programs = filter(x -> x == "true" || occursin("location", x), programs)
-            println("programs")
-            println(programs)
+            # println("programs")
+            # println(programs)
 
             # evaluate all the possible spatial memory representations and select the best one
             formatted_programs = []
@@ -870,14 +870,14 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
 
             results = []
             for i in 1:length(evaluated_lambdas)
-                # println("let's try! 1")
+                # # println("let's try! 1")
                 global x = evaluated_lambdas[i]
-                # println(formatted_programs[i])
+                # # println(formatted_programs[i])
 
                 if !(scene.prize isa Whole)
-                    # println("let's try! 2")
+                    # # println("let's try! 2")
                     r = @eval filter($x, $locations) 
-                    # println(r)
+                    # # println(r)
                     push!(results, r)
                 else
                     shift = (scene.prize.coral.x + scene.prize.green.x)/2
@@ -902,10 +902,10 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 programs = map(i -> programs[i], idxs)
                 results = map(i -> results[i], idxs)
 
-                # println("programs")
-                # println(programs)
-                # println("results")
-                # println(results)
+                # # println("programs")
+                # # println(programs)
+                # # println("results")
+                # # println(results)
 
                 if results == []
                     scores[config_name] = 1/3
@@ -935,7 +935,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
 
                 best_indices = findall(t -> length(t[2]) == minimum(map(tup -> length(tup[2]), programs_and_results)), programs_and_results)
                 best_programs = map(i -> programs_and_results[i], best_indices)
-                println(best_programs)
+                # println(best_programs)
                 sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
                 best_program, locations_to_search = best_programs[1]
 
@@ -945,9 +945,9 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 end
                 println("best_program")
                 println(best_program)
-                println("temp_program")
-                println(temp_program)
-                # println(locations_to_search)
+                # println("temp_program")
+                # println(temp_program)
+                # # println(locations_to_search)
                 if occursin("modified", config_name)
                     old_locations = scene.locations
                     special_corner1, special_corner2 = filter(x -> x isa SpecialCorner, old_locations)

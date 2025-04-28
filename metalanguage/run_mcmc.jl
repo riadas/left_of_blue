@@ -1,10 +1,13 @@
 include("run_unordered_analogy.jl")
-global test_name = "mcmc"
+using StatsBase 
+using Combinatorics
+global repeats = 1
+global test_name = "mcmc_$(repeats)"
 global alpha_num_funcs = 1.0 # 0.5
 global alpha_semantics_size = 0.75
 global base_semantics_str = ""
 global alpha_AST_weight = 2 # 10
-global alpha_empty_prob = 0.05
+global alpha_empty_prob = 0.0001
 global first_decision_weights = Dict([
     "edit" => 4,
     "add" => 3, 
@@ -105,6 +108,8 @@ function sample_function_subset(all_functions, subset_size)
     for i in 1:length(all_functions)
         if all_functions[i] in subset 
             all_functions_copy[i].definition = "true"
+        else
+            all_functions_copy[i].definition = ""
         end
     end
 
@@ -160,12 +165,17 @@ function compute_function_subset_weight_scores(all_functions)
 end
 
 
-function sample_semantics(function_sig, base_semantics)
+function sample_semantics(function_sig, base_semantics, mode="prior")
     possible_semantics = generate_all_semantics(function_sig, base_semantics)
     @show possible_semantics
 
-    # sample from set of possible semantics, biasing shorter semantics 
-    semantics_weights = map(x -> alpha_semantics_size^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha_semantics_size^x
+    # sample from set of possible semantics, biasing shorter semantics
+    if mode == "prior"
+        alpha = alpha_semantics_size        
+    elseif mode == "proposal"
+        alpha = 1.0
+    end
+    semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
     semantics_weights = semantics_weights .* 1/sum(semantics_weights)
     if function_sig.definition == ""
         final_semantics = sample(possible_semantics, ProbabilityWeights(semantics_weights))
@@ -180,7 +190,7 @@ function sample_semantics(function_sig, base_semantics)
     # println(index)
 
     prob = semantics_weights[index] 
-
+    println(function_sig.definition)
     (function_sig, prob)
 end
 
@@ -234,7 +244,10 @@ function compute_likelihood(all_functions, test_config_names, repeats=1)
 
     # return product of probabilities in the `scores` dict
     probs = map(k -> scores[k], [keys(scores)...])
-    # @show probs
+    println("COMPUTE LIKELIHOOD")
+    @show probs
+    println(join(function_definition_strs, "\n"))
+    println("END COMPUTE LIKELIHOOD")
     return foldl(*, probs, init=1.0)^repeats
 end
 
@@ -259,7 +272,8 @@ function proposal(current_state)
             println("starting from full: EDIT")
             println(subset[1])
             push!(probs, prob)
-            _, prob = sample_semantics(subset[1], base_semantics)
+            subset[1].definition = ""
+            _, prob = sample_semantics(subset[1], base_semantics, "proposal")
             push!(probs, prob)
         else # delete
             subset, prob = sample_function_subset(old_functions, 1)
@@ -274,7 +288,7 @@ function proposal(current_state)
         subset, _ = sample_function_subset(old_functions, 1)
         println("starting from zero: ADD")
         println(subset[1])
-        _, prob = sample_semantics(subset[1], base_semantics)
+        _, prob = sample_semantics(subset[1], base_semantics, "proposal")
         push!(probs, prob)
     else
         # all three options (add, edit, delete)
@@ -293,7 +307,10 @@ function proposal(current_state)
             println("EDIT")
             println(subset[1])
             push!(probs, prob)
-            _, prob = sample_semantics(subset[1], base_semantics)
+            subset[1].definition = ""
+            x, prob = sample_semantics(subset[1], base_semantics, "proposal")
+            println("SAMPLED DEFINITION")
+            println(x)
             push!(probs, prob)
 
         elseif first_choice == "delete"
@@ -307,7 +324,7 @@ function proposal(current_state)
             println("ADD")
             println(subset[1])
             push!(probs, prob)
-            _, prob = sample_semantics(subset[1], base_semantics)
+            _, prob = sample_semantics(subset[1], base_semantics, "proposal")
             push!(probs, prob)
         end
     end
@@ -319,10 +336,10 @@ end
 
 # for computing the backwards probability
 function compute_transition_probability(current_state, proposed_state)
-    old_functions = current_state
+    old_functions = deepcopy(current_state)
     synthesized_old_functions = filter(x -> x.definition != "", old_functions)
 
-    new_functions = proposed_state 
+    new_functions = deepcopy(proposed_state) 
     synthesized_new_functions = filter(x -> x.definition != "", new_functions)    
 
     probs = []
@@ -349,20 +366,20 @@ function compute_transition_probability(current_state, proposed_state)
                 end
             end
 
-            if !isnothing(changed_func)
+            if !isnothing(changed_func_idx)
 
 
                 all_functions = deepcopy(proposed_state)
                 for i in 1:length(all_functions)
                     if i != changed_func_idx
-                        f.definition = ""
+                        all_functions[i].definition = ""
                     end
                 end
 
                 prob = compute_function_subset_prob(all_functions)
                 push!(probs, prob)
 
-                _, prob = sample_semantics(proposed_state[changed_func_idx], base_semantics)
+                _, prob = sample_semantics(all_functions[changed_func_idx], base_semantics, "proposal")
                 push!(probs, prob)
             else
                 probs_to_sum = []
@@ -384,7 +401,7 @@ function compute_transition_probability(current_state, proposed_state)
                     end
 
                     prob1 = compute_function_subset_prob(all_functions_copy)
-                    _, prob2 = sample_semantics(all_functions_copy[i], base_semantics)
+                    _, prob2 = sample_semantics(all_functions_copy[i], base_semantics, "proposal")
 
                     push!(probs_to_sum, prob1*prob2)
                 end
@@ -420,10 +437,10 @@ function compute_transition_probability(current_state, proposed_state)
 
     elseif length(synthesized_old_functions) == 0
         # no functions are filled: must choose one to initialize
-        prob = compute_function_subset_prob(proposed_state)
+        prob = compute_function_subset_prob(new_functions)
         push!(probs, prob)
-        func = filter(x -> x != "", proposed_state)[1]
-        _, prob = sample_semantics(func, base_semantics)
+        func = filter(x -> x != "", new_functions)[1]
+        _, prob = sample_semantics(func, base_semantics, "proposal")
         push!(probs, prob)
     else
 
@@ -463,7 +480,7 @@ function compute_transition_probability(current_state, proposed_state)
                 prob = compute_function_subset_prob(all_functions)
                 push!(probs, prob)
     
-                _, prob = sample_semantics(proposed_state[added_func_idx], base_semantics)
+                _, prob = sample_semantics(new_functions[edited_func_idx], base_semantics, "proposal")
                 push!(probs, prob)
 
             else
@@ -486,7 +503,7 @@ function compute_transition_probability(current_state, proposed_state)
                     end
 
                     prob1 = compute_function_subset_prob(all_functions_copy)
-                    _, prob2 = sample_semantics(all_functions_copy[i], base_semantics)
+                    _, prob2 = sample_semantics(all_functions_copy[i], base_semantics, "proposal")
 
                     push!(probs_to_sum, prob1*prob2)
                 end
@@ -524,7 +541,7 @@ function compute_transition_probability(current_state, proposed_state)
             prob = compute_function_subset_prob(all_functions)
             push!(probs, prob)
 
-            _, prob = sample_semantics(proposed_state[added_func_idx], base_semantics)
+            _, prob = sample_semantics(new_functions[added_func_idx], base_semantics, "proposal")
             push!(probs, prob)
         else
             # delete
@@ -562,15 +579,37 @@ function compute_transition_probability(current_state, proposed_state)
 end
 
 function compute_acceptance_probability(current_state, proposed_state, test_config_names, repeats=1)
+    println("CURRENT STATE FUNCTIONS 1")
+    println(join(map(x -> x.definition, current_state), "\n"))
+
+    println("PROPOSED STATE FUNCTIONS 1")
+    println(join(map(x -> x.definition, proposed_state), "\n"))
+
     current_prior = compute_prior_probability(current_state)
-    current_likelihood = compute_likelihood(current_state, test_config_names)
+    current_likelihood = compute_likelihood(current_state, test_config_names, repeats)
 
     proposed_prior = compute_prior_probability(proposed_state)
     proposed_likelihood = compute_likelihood(proposed_state, test_config_names, repeats)
 
-    proposal_ratio = compute_transition_probability(current_state, proposed_state) / compute_transition_probability(proposed_state, current_state)
+    ratio_numerator = compute_transition_probability(proposed_state, current_state) 
+    ratio_denominator = compute_transition_probability(current_state, proposed_state)
+    proposal_ratio = ratio_numerator / ratio_denominator
 
     acceptance_ratio = minimum([1.0, (proposed_prior * proposed_likelihood)/(current_prior * current_likelihood) * proposal_ratio])
+
+    println("CURRENT STATE FUNCTIONS 2")
+    println(join(map(x -> x.definition, current_state), "\n"))
+
+    println("PROPOSED STATE FUNCTIONS 2")
+    println(join(map(x -> x.definition, proposed_state), "\n"))
+
+    @show current_prior 
+    @show current_likelihood 
+    @show ratio_numerator 
+    @show proposed_prior 
+    @show proposed_likelihood 
+    @show ratio_denominator
+    @show acceptance_ratio
     return acceptance_ratio
 end
 
@@ -580,12 +619,15 @@ function run_mcmc(initial_state, test_config_names=[], iters=1000, repeats=1)
     for i in 1:iters
         println("ITER $(i)")
         proposed_state, _ = proposal(current_state)
+        println(current_state)
+        println(proposed_state)
         acceptance_probability = compute_acceptance_probability(current_state, proposed_state, test_config_names, repeats)
         if rand() < acceptance_probability 
             # accept!
+            println("----- ACCEPT!")
             current_state = proposed_state 
         end
-        push!(chain, current_state)
+        push!(chain, deepcopy(current_state))
     end
     chain
 end
@@ -628,4 +670,16 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 # # println(prob2)
 
 test_config_names = ["rect_room_blue_wall_center_prize.json", "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, 3)
+chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+
+# println("PRIOR ONE")
+# println(compute_prior_probability(all_function_sigs))
+
+# println("LIKELIHOOD ONE")
+# println(compute_likelihood(all_function_sigs, test_config_names, 1))
+
+# println("PRIOR TWO")
+# all_function_sigs[1].definition = "location_arg.color == color_arg"
+# println(compute_prior_probability(all_function_sigs))
+# println("LIKELIHOOD TWO")
+# println(compute_likelihood(all_function_sigs, test_config_names, 1))
