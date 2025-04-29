@@ -6,8 +6,8 @@ global test_name = "mcmc_$(repeats)_new_prior"
 global alpha_num_funcs = 1.0 # 0.5
 global alpha_semantics_size = 0.75
 global base_semantics_str = ""
-global alpha_AST_weight = 10 # 2
-global alpha_arg_weight = 2 # 10
+global alpha_AST_weight = 2 # 10
+global alpha_arg_weight = 1 # 2
 global alpha_empty_prob = 0.0001
 global first_decision_weights = Dict([
     "edit" => 4,
@@ -155,13 +155,14 @@ function compute_function_subset_weight_scores(all_functions)
         # @show min_possible_AST_size 
         num_args = length(func.arg_names)
         # @show num_args
-        weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
+        # weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
+        weight_score = min_possible_AST_size^alpha_AST_weight + num_args
         # @show weight_score
-        weight_scores[format_new_function_string(func)] = weight_score # 1/weight_score
+        weight_scores[format_new_function_string(func)] = 1/weight_score
     end
     weights = map(x -> weight_scores[format_new_function_string(x)], all_functions)
-    weights = weights .- minimum(weights) .+ 1
-    weights = map(x -> 1/x, weights)
+    # weights = weights .- minimum(weights) .+ 1
+    # weights = map(x -> 1/x, weights)
     # println("final weights")
     # @show weights
     return weights .* 1/sum(weights)
@@ -673,7 +674,7 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 # # println(prob2)
 
 test_config_names = ["rect_room_blue_wall_center_prize.json", "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+chain = run_mcmc(all_function_sigs, test_config_names, 100, repeats)
 
 # println("PRIOR ONE")
 # println(compute_prior_probability(all_function_sigs))
