@@ -1,0 +1,23 @@
+("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "location_arg.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "location_arg.position.x < 0"
+), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 258)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "location_arg.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], ""), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 216)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "prev(location_arg, locations).wall2.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "locati
+on_arg.position.x < 0"), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 141)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "next(location_arg, locations).wall1.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "locati
+on_arg.position.x < 0"), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 107)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "next(location_arg, locations).wall1.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "locati
+on_arg.position.x < 0"), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "")]", 67)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "prev(location_arg, locations).wall2.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], ""), F
+unction("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 60)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "location_arg.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "location_arg.position.x < 0"
+), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "")]", 48)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "next(location_arg, locations).wall1.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], ""), F
+unction("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "location_arg.wall2.color == color_arg")]", 48)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], "prev(location_arg, locations).wall2.color == color_arg"), Function("my_left", ["location_arg"], DataType[Spot], "locati
+on_arg.position.x < 0"), Function("left_of", ["location_arg", "color_arg"], DataType[Corner, COLOR], "")]", 41)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], ""), Function("my_left", ["location_arg"], DataType[Spot], "location_arg.position.x < 0"), Function("left_of", ["loc
+ation_arg", "color_arg"], DataType[Corner, COLOR], "")]", 13)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], ""), Function("my_left", ["location_arg"], DataType[Spot], "location_arg.position.x < 1"), Function("left_of", ["loc
+ation_arg", "color_arg"], DataType[Corner, COLOR], "")]", 1)
+ ("Function[Function("at", ["location_arg", "color_arg"], DataType[Wall, COLOR], ""), Function("my_left", ["location_arg"], DataType[Spot], ""), Function("left_of", ["location_arg", "color_arg"]
+, DataType[Corner, COLOR], "")]", 1)

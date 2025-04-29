@@ -107,7 +107,7 @@ function at(location_arg::Wall, color_arg::COLOR)::Bool
 end
 
 function my_left(location_arg::Spot)::Bool
-    location_arg.position.x < 0
+    location_arg.position.x > 1
 end
 
 function left_of(location_arg::Corner, color_arg::COLOR)::Bool
