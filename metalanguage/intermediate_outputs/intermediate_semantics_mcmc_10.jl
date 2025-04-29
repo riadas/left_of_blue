@@ -105,3 +105,11 @@ end
 function at(location_arg::Wall, color_arg::COLOR)::Bool
     prev(location_arg, locations).wall1.color == color_arg
 end
+
+function my_left(location_arg::Spot)::Bool
+    location_arg.position.x < 0
+end
+
+function left_of(location_arg::Corner, color_arg::COLOR)::Bool
+    location_arg.wall2.color == color_arg
+end

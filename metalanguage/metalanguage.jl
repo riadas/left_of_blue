@@ -11,7 +11,7 @@ global base_syntax = Dict(
     Wall =>   "location.depth == genDEPTH", # | lib_at Wall COLOR
     Corner => "location.wall1.depth genComparison location.wall2.depth",
     SpecialCorner => "location.wall1.depth genComparison location.wall2.depth",
-    Spot =>   "true",
+    Spot =>   "location.position.y == 0 && location.position.z == 0",
     Whole =>  "location.coral.x != 0", # geometry match
 )
 

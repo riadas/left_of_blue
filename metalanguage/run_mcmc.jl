@@ -1,8 +1,8 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 1
-global test_name = "mcmc_$(repeats)"
+#global repeats = 1
+global test_name = "mcmc_$(repeats)_x"
 global alpha_num_funcs = 1.0 # 0.5
 global alpha_semantics_size = 0.75
 global base_semantics_str = ""
@@ -669,7 +669,7 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 # # println(prob1)
 # # println(prob2)
 
-test_config_names = ["rect_room_blue_wall_center_prize.json", "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
+test_config_names = ["rect_room_blue_wall_center_prize.json", "rect_room_blue_wall_center_prize2.json", "rect_room_blue_wall_center_prize3.json",  "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
 chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
 # println("PRIOR ONE")

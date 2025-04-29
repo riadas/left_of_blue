@@ -102,6 +102,6 @@ end
 
 # --- DEVELOPMENTAL STAGE 1 ---
 # no wall color parameter in spatial memory; purely geometric
-function at(location_arg::Wall, color_arg::COLOR)::Bool
-    prev(location_arg, locations).wall1.color == color_arg
+function left_of(location_arg::Corner, color_arg::COLOR)::Bool
+    location_arg.wall2.color == color_arg
 end
