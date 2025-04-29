@@ -248,7 +248,14 @@ function genWall_semantics(arg_names::Vector{String}, arg_types::Vector{DataType
                         "next($(arg_name), locations).wall2"])
     elseif type == Corner || type == SpecialCorner
         choice = rand(["$(arg_name).wall1",
-                        "$(arg_name).wall2"])
+                        "$(arg_name).wall2",
+                        "next($(arg_name), locations)",
+                        "prev($(arg_name), locations)",
+                        "next(next($(arg_name), locations), locations).wall1",
+                        "next(next($(arg_name), locations), locations).wall2",
+                        "prev(prev($(arg_name), locations), locations).wall1",
+                        "prev(prev($(arg_name), locations), locations).wall2"
+                        ])
     end
     choice
 end
