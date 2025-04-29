@@ -10,9 +10,10 @@ function plot_relative_proportions(chains)
         else
             q = map(y -> (y, count(z -> repr(z) == y, chain)), unique(map(x -> repr(x), filter(w -> true, chain))))
             q_sorted = reverse(sort(q, by=x -> x[2]))
-            push!(histograms, histograms)
+            push!(histograms, q_sorted)
 
             map_estimate = q_sorted[1][1]
+            println(map_estimate)
             push!(map_estimates, map_estimate)
         end 
     end
@@ -46,12 +47,12 @@ function plot_relative_proportions(chains)
     return p
 end
 
-trial_name = ""
+trial_name = "trial6_extra_data_new_prior_new_sem_space"
 chain_filenames = readdir("metalanguage/results/mcmc/$(trial_name)")
-chain_filenames = sort(chain_filenames, by=x -> Int(replace(x[6:end], ".txt" => "")))
+chain_filenames = sort(chain_filenames, by=x -> parse(Int, replace(x[7:end], ".txt" => "")))
 chains = []
 for chain_filename in chain_filenames 
-    open() do f 
+    open("metalanguage/results/mcmc/$(trial_name)/$(chain_filename)", "r") do f 
         text = read(f, String)
         obj = eval(Meta.parse(text))
         push!(chains, obj)
