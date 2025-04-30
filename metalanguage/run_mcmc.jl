@@ -1,18 +1,18 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 13
+global repeats = 4
 global test_name = "mcmc_$(repeats)_new_sem_space"
-global alpha_num_funcs = 1.0 # 0.5
-global alpha_semantics_size = 0.75
+global alpha_num_funcs = 0.0025 # 0.01, 0.5
+global alpha_semantics_size = 0.5
 global base_semantics_str = ""
 global alpha_AST_weight = 10 # 10
 global alpha_arg_weight = 2 # 2
 global alpha_empty_prob = 0.0001
 global first_decision_weights = Dict([
-    "edit" => 4,
+    "edit" => 3,
     "add" => 3, 
-    "delete" => 1,
+    "delete" => 3,
 ])
 
 open("metalanguage/base_semantics.jl", "r") do f 
@@ -41,7 +41,7 @@ function generative_prior(all_functions)
 
     # prefix of length num_functions of all functions
     # functions_to_synth = all_functions[1:num_functions]
-    functions_to_synth, prob = sample_function_subset(all_functions, num_functions)
+    functions_to_synth, prob = sample_function_subset(all_functions, num_functions, "proposal")
     push!(probs, prob)
 
     # synthesize semantics for each
@@ -85,8 +85,8 @@ function compute_prior_probability(all_functions)
     return foldl(*, probs, init=1.0)
 end
 
-function sample_function_subset(all_functions, subset_size)
-    weights = compute_function_subset_weight_scores(all_functions)
+function sample_function_subset(all_functions, subset_size, mode="prior")
+    weights = compute_function_subset_weight_scores(all_functions, mode)
     subset = []
     probs = []
     funcs = all_functions
@@ -114,17 +114,18 @@ function sample_function_subset(all_functions, subset_size)
         end
     end
 
-    final_prob = compute_function_subset_prob(all_functions_copy)
+    final_prob = compute_function_subset_prob(all_functions_copy, mode)
     return subset, final_prob
 end
 
-function compute_function_subset_prob(all_functions)
+function compute_function_subset_prob(all_functions, mode="prior")
     # println("compute_function_subset_prob")
     synthesized_funcs = filter(x -> x.definition != "", all_functions)
     final_probs = []
     for synth_funcs in collect(permutations(synthesized_funcs))
-        weights = compute_function_subset_weight_scores(all_functions)
-        # @show weights
+        @show synth_funcs
+        weights = compute_function_subset_weight_scores(all_functions, mode)
+        @show weights
         funcs = all_functions
         probs = []
         for i in 1:length(synth_funcs)
@@ -142,11 +143,11 @@ function compute_function_subset_prob(all_functions)
         push!(final_probs, final_prob)
     end
 
-    final_prob = foldl(*, final_probs, init=1.0)
+    final_prob = foldl(+, final_probs, init=0.0)
     return final_prob
 end
 
-function compute_function_subset_weight_scores(all_functions)
+function compute_function_subset_weight_scores(all_functions, mode="prior")
     min_possible_AST_size_dict = Dict(map(x -> format_new_function_string(x) => size(Meta.parse(generate_all_semantics(x, base_semantics)[1])), all_functions))
     weight_scores = Dict()
     for func in all_functions 
@@ -155,7 +156,11 @@ function compute_function_subset_weight_scores(all_functions)
         # @show min_possible_AST_size 
         num_args = length(func.arg_names)
         # @show num_args
-        weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
+        if mode == "prior"
+            weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
+        else
+            weight_score = 1
+        end
         # weight_score = min_possible_AST_size^alpha_AST_weight + num_args
         # @show weight_score
         # weight_scores[format_new_function_string(func)] = 1/weight_score
@@ -273,7 +278,7 @@ function proposal(current_state)
         first_choice = sample(["edit", "delete"], ProbabilityWeights(weights))
         push!(probs, weights[findall(x -> x == first_choice, ["edit", "delete"])[1]])
         if first_choice == "edit"
-            subset, prob = sample_function_subset(old_functions, 1)
+            subset, prob = sample_function_subset(old_functions, 1, "proposal")
             println("starting from full: EDIT")
             println(subset[1])
             push!(probs, prob)
@@ -281,7 +286,7 @@ function proposal(current_state)
             _, prob = sample_semantics(subset[1], base_semantics, "proposal")
             push!(probs, prob)
         else # delete
-            subset, prob = sample_function_subset(old_functions, 1)
+            subset, prob = sample_function_subset(old_functions, 1, "proposal")
             println("starting from full: DELETE")
             println(subset[1])
             subset[1].definition = ""
@@ -290,7 +295,7 @@ function proposal(current_state)
 
     elseif length(synthesized_old_functions) == 0
         # no functions are filled: must choose one to initialize
-        subset, _ = sample_function_subset(old_functions, 1)
+        subset, _ = sample_function_subset(old_functions, 1, "proposal")
         println("starting from zero: ADD")
         println(subset[1])
         _, prob = sample_semantics(subset[1], base_semantics, "proposal")
@@ -308,7 +313,7 @@ function proposal(current_state)
         push!(probs, weights[findall(x -> x == first_choice, ["edit", "delete", "add"])[1]])
 
         if first_choice == "edit"
-            subset, prob = sample_function_subset(filter(x -> x.definition != "", old_functions), 1)
+            subset, prob = sample_function_subset(filter(x -> x.definition != "", old_functions), 1, "proposal")
             println("EDIT")
             println(subset[1])
             push!(probs, prob)
@@ -319,13 +324,13 @@ function proposal(current_state)
             push!(probs, prob)
 
         elseif first_choice == "delete"
-            subset, prob = sample_function_subset(filter(x -> x.definition != "", old_functions), 1)
+            subset, prob = sample_function_subset(filter(x -> x.definition != "", old_functions), 1, "proposal")
             println("DELETE")
             println(subset[1])
             subset[1].definition = ""
             push!(probs, prob)
         elseif first_choice == "add"
-            subset, prob = sample_function_subset(filter(x -> x.definition == "", old_functions), 1)
+            subset, prob = sample_function_subset(filter(x -> x.definition == "", old_functions), 1, "proposal")
             println("ADD")
             println(subset[1])
             push!(probs, prob)
@@ -381,7 +386,7 @@ function compute_transition_probability(current_state, proposed_state)
                     end
                 end
 
-                prob = compute_function_subset_prob(all_functions)
+                prob = compute_function_subset_prob(all_functions, "proposal")
                 push!(probs, prob)
 
                 _, prob = sample_semantics(all_functions[changed_func_idx], base_semantics, "proposal")
@@ -405,7 +410,7 @@ function compute_transition_probability(current_state, proposed_state)
                         end
                     end
 
-                    prob1 = compute_function_subset_prob(all_functions_copy)
+                    prob1 = compute_function_subset_prob(all_functions_copy, "proposal")
                     _, prob2 = sample_semantics(all_functions_copy[i], base_semantics, "proposal")
 
                     push!(probs_to_sum, prob1*prob2)
@@ -436,13 +441,13 @@ function compute_transition_probability(current_state, proposed_state)
                 end
             end
 
-            prob = compute_function_subset_prob(all_functions)
+            prob = compute_function_subset_prob(all_functions, "proposal")
             push!(probs, prob)
         end
 
     elseif length(synthesized_old_functions) == 0
         # no functions are filled: must choose one to initialize
-        prob = compute_function_subset_prob(new_functions)
+        prob = compute_function_subset_prob(new_functions, "proposal")
         push!(probs, prob)
         func = filter(x -> x != "", new_functions)[1]
         _, prob = sample_semantics(func, base_semantics, "proposal")
@@ -482,7 +487,7 @@ function compute_transition_probability(current_state, proposed_state)
                     end                
                 end
 
-                prob = compute_function_subset_prob(all_functions)
+                prob = compute_function_subset_prob(all_functions, "proposal")
                 push!(probs, prob)
     
                 _, prob = sample_semantics(new_functions[edited_func_idx], base_semantics, "proposal")
@@ -507,7 +512,7 @@ function compute_transition_probability(current_state, proposed_state)
                         end
                     end
 
-                    prob1 = compute_function_subset_prob(all_functions_copy)
+                    prob1 = compute_function_subset_prob(all_functions_copy, "proposal")
                     _, prob2 = sample_semantics(all_functions_copy[i], base_semantics, "proposal")
 
                     push!(probs_to_sum, prob1*prob2)
@@ -543,7 +548,7 @@ function compute_transition_probability(current_state, proposed_state)
                 end
             end
 
-            prob = compute_function_subset_prob(all_functions)
+            prob = compute_function_subset_prob(all_functions, "proposal")
             push!(probs, prob)
 
             _, prob = sample_semantics(new_functions[added_func_idx], base_semantics, "proposal")
@@ -573,7 +578,7 @@ function compute_transition_probability(current_state, proposed_state)
                 end                
             end
 
-            prob = compute_function_subset_prob(all_functions)
+            prob = compute_function_subset_prob(all_functions, "proposal")
             push!(probs, prob)
         end
     end
@@ -674,8 +679,19 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 # # println(prob1)
 # # println(prob2)
 
-test_config_names = ["rect_room_blue_wall_center_prize.json", "rect_room_blue_wall_center_prize3.json",  "spatial_lang_test_left_true_shift_0.json", "spatial_lang_test_copy_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+# test_config_names = ["rect_room_blue_wall_center_prize.json",  "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
+test_config_names = [
+    "square_room_blue_wall_center_prize.json",
+    "square_room_blue_wall_center_prize_copy1.json",
+    "square_room_blue_wall_center_prize_copy2.json",  
+    "square_room_blue_wall_center_prize_copy3.json",  
+    "spatial_lang_test_left_true_shift_0.json", 
+    "spatial_lang_test_copy_left_true_shift_0.json", 
+    "spatial_lang_test_copy2_left_true_shift_0.json", 
+    "square_room_blue_wall_left_prize.json"
+    ]
+
+chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # println("PRIOR ONE")
 # println(compute_prior_probability(all_function_sigs))
