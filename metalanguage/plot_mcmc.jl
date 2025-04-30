@@ -207,12 +207,12 @@ function plot_relative_proportions(chains, mode="proportion")
 
     return p
 end
-
-trial_name = "trial9_fixed_bug"
+# trial_name = "trial11_tiny_prior_copy"
+trial_name = "trial11_tiny_prior_copy"
 chain_filenames = readdir("metalanguage/results/mcmc/$(trial_name)")
 chain_filenames = sort(chain_filenames, by=x -> parse(Int, replace(x[7:end], ".txt" => "")))
 chains = []
-for chain_filename in chain_filenames[1:end-4]
+for chain_filename in chain_filenames[1:end]
     open("metalanguage/results/mcmc/$(trial_name)/$(chain_filename)", "r") do f 
         text = read(f, String)
         obj = eval(Meta.parse(text))
