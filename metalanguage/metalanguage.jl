@@ -58,7 +58,12 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
             s = generate_semantics(partial_function_signature, current_semantics_cfg)
             push!(partial_semantics, s)
         end
-        sort!(partial_semantics, by=length) # PATCH
+
+        # PATCH
+        sort!(partial_semantics, by=length) 
+        reverse!(partial_semantics)
+        partial_semantics[1] = replace(partial_semantics[1], function_signature.arg_names[3] => function_signature.arg_names[2])
+        partial_semantics[2] = replace(partial_semantics[2], function_signature.arg_names[2] => function_signature.arg_names[3])
 
         return "$(partial_semantics[1]) && $(partial_semantics[2])"
     end

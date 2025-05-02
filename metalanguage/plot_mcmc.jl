@@ -17,10 +17,6 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
             push!(histograms, q_sorted)
             
             map_estimate = q_sorted[1][1]
-            # TEMP PATCH
-            if occursin("next", map_estimate)
-                map_estimate = q_sorted[2][1]
-            end
             println(length(histograms))
             println(map_estimate)
             push!(map_estimates, map_estimate)
@@ -35,7 +31,7 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
     p = ""
     sums = zeros(length(chains) + 1)
     sums[1] = 1.0
-    all_results = map(x -> [0.0], 1:(length(chains) + 1)) 
+    all_results = map(x -> [], 1:(length(chains) + 1)) 
     all_results[1] = [0.0, 0.0, 0.0, 1.0]
     for map_estimate_str in map_estimates 
         plot_data[map_estimate_str] = [0.0]
@@ -117,6 +113,7 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
             end
             l = legend_names[l]
             # data = plot_data[map_estimate_str] ./ sums 
+            @show all_results
             data = map(i -> findall(x -> x == plot_data[map_estimate_str][i], all_results[i])[1], 1:length(plot_data[map_estimate_str]))
         
             if p == ""
@@ -249,7 +246,8 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
     return p
 end
 # trial_name = "trial11_tiny_prior_copy"
-trial_name = "trial13_tinier_prior_tiny_empty_prob"
+# trial_name = "trial13_tinier_prior_tiny_empty_prob"
+trial_name = "trial14_tinier_prior_tiny_empty_prob_REPEAT"
 chain_filenames = readdir("metalanguage/results/mcmc/$(trial_name)")
 chain_filenames = sort(chain_filenames, by=x -> parse(Int, replace(x[7:end], ".txt" => "")))
 chains = []
@@ -261,7 +259,7 @@ for chain_filename in chain_filenames #[1:10]
     end
 end
 
-# p = plot_relative_proportions(chains, "rank", trial_name)
-# p = plot_relative_proportions(chains, "proportion", trial_name)
+p = plot_relative_proportions(chains, "rank", trial_name)
+p = plot_relative_proportions(chains, "proportion", trial_name)
 p = plot_relative_proportions(chains, "correlation_map", trial_name)
 p = plot_relative_proportions(chains, "correlation_avg", trial_name)

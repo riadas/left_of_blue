@@ -11,19 +11,19 @@ end
 # reset results folders
 category_names = ["left_of_blue", "spatial_lang_test", "red_green_test"]
 combined_results_dir = "metalanguage/results/unordered_analogy/combined"
-if isdir(combined_results_dir)
-    rm(combined_results_dir, recursive=true)
-end
-mkdir(combined_results_dir)
+# if isdir(combined_results_dir)
+#     rm(combined_results_dir, recursive=true)
+# end
+# mkdir(combined_results_dir)
 
-split_results_dir = "metalanguage/results/unordered_analogy/by_category"
-if isdir(split_results_dir)
-    rm(split_results_dir, recursive=true)
-end
-mkdir(split_results_dir)
-for category_name in category_names 
-    mkdir("$(split_results_dir)/$(category_name)")
-end
+# split_results_dir = "metalanguage/results/unordered_analogy/by_category"
+# if isdir(split_results_dir)
+#     rm(split_results_dir, recursive=true)
+# end
+# mkdir(split_results_dir)
+# for category_name in category_names 
+#     mkdir("$(split_results_dir)/$(category_name)")
+# end
 combined_to_split_mapping = []
 categories = [[Wall, Corner, SpecialCorner, DEPTH, COLOR], [Spot], [Half, Whole]]
 
