@@ -1,7 +1,7 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-#global repeats = 1
+global repeats = 1
 global test_name = "mcmc_$(repeats)_fourth_function"
 global alpha_num_funcs = 0.000025 # 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
@@ -177,7 +177,7 @@ end
 
 function sample_semantics(function_sig, base_semantics, mode="prior")
     possible_semantics = generate_all_semantics(function_sig, base_semantics)
-    @show possible_semantics
+    # @show possible_semantics
 
     # sample from set of possible semantics, biasing shorter semantics
     if mode == "prior"
@@ -623,9 +623,22 @@ function compute_acceptance_probability(current_state, proposed_state, test_conf
     return acceptance_ratio
 end
 
-function run_mcmc(initial_state, test_config_names=[], iters=1000, repeats=1)
-    chain = [initial_state]
-    current_state = initial_state 
+function run_mcmc(initial_state, test_config_names=[], iters=1000, repeats=1, intermediate_save_name="", test_name="", init=false)
+    if test_name != ""
+        global test_name = test_name
+    end
+    chain = nothing
+    if init || intermediate_save_name == ""
+        chain = [initial_state]
+        current_state = initial_state 
+    else
+        open("metalanguage/intermediate_outputs/intermediate_chains/$(intermediate_save_name)", "r") do f 
+            text = read(f, String)
+            chain = eval(Meta.parse(text))
+        end
+        current_state = chain[end]
+    end
+
     for i in 1:iters
         println("ITER $(i)")
         proposed_state, _ = proposal(current_state)
@@ -672,7 +685,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function]
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function]
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
@@ -693,15 +706,17 @@ test_config_names = [
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json",
     # "spatial_lang_test_copy3_left_true_shift_0.json",
+    #"spatial_lang_test_copy2_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
     "square_room_blue_wall_far-left-corner_prize.json"
     ]
 
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+#chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
-open("metalanguage/results/mcmc/trial14_tinier_prior_tiny_empty_prob_REPEAT/chain_$(repeats).txt", "w+") do f
-                              write(f, repr(chain))
-                            end
+#open("metalanguage/results/mcmc/trial14_tinier_prior_tiny_empty_prob_REPEAT/chain_$(repeats).txt", "w+") do f
+#                              write(f, repr(chain))
+#                            end
+
 
 # println("PRIOR ONE")
 # println(compute_prior_probability(all_function_sigs))
