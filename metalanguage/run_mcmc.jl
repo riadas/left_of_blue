@@ -1,14 +1,16 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 20
-global test_name = "mcmc_$(repeats)_new_sem_space_y"
+global repeats = 10
+global test_name = "mcmc_$(repeats)_new_sem_space_z"
 global alpha_num_funcs = 0.0025 # 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
 global base_semantics_str = ""
 global alpha_AST_weight = 10 # 10
 global alpha_arg_weight = 2 # 2
 global alpha_empty_prob = 0.05 # 0.0001
+global alpha_empty_symmetry = 0.4
+global alpha_symmetry_over_non_symmetry = 0.95
 global first_decision_weights = Dict([
     "edit" => 3,
     "add" => 3, 
@@ -21,7 +23,33 @@ end
 
 # TODO: add same function name check in proposal/compute_transition_probability
 
-function generative_prior(all_functions)
+function generative_prior(all_functions_with_sym)
+    # group all functions including symmetries by type signature
+    type_signature_groups = Dict()
+    for f in all_functions_with_sym
+        type_signature = string(f.arg_types)
+        if type_signature in keys(type_signature_groups)
+            push!(type_signature_groups[type_signature], f)
+        else
+            type_signature_groups[type_signature] = [f]
+        end
+    end
+
+    all_functions = []
+    choose_first = rand() < 0.5
+    for k in keys(type_signature_groups)
+        fs = sort(type_signature_groups[k], by=x -> x.name)
+        if choose_first 
+            push!(all_functions, fs[1])
+        else
+            push!(all_functions, fs[end])
+        end
+    end
+
+    if length(all_functions) != length(all_functions_with_sym)
+        push!(probs, 0.5)
+    end
+
     # generate subset of functions to fill
     total_num_functions = length(all_functions)
     weights = map(x -> alpha_num_funcs^x, 1:total_num_functions)
@@ -41,7 +69,7 @@ function generative_prior(all_functions)
 
     # prefix of length num_functions of all functions
     # functions_to_synth = all_functions[1:num_functions]
-    functions_to_synth, prob = sample_function_subset(all_functions, num_functions, "proposal")
+    functions_to_synth, prob = sample_function_subset(all_functions, num_functions, "prior")
     push!(probs, prob)
 
     # synthesize semantics for each
@@ -52,14 +80,77 @@ function generative_prior(all_functions)
         end
     end
 
+    # now handle symmetric functions (excluded in all_functions but included in symmetric functions)
+
+    sym_count = 0
+    acc_count = 0
+    for f in all_functions_with_sym 
+        if !(f in all_functions)
+            type_signature = string(f.arg_types)
+            sym_fs = filter(x -> x != f, type_signature_groups[type_signature])
+            if sym_fs != [] && sym_fs[1].definition != ""
+                acc_count += 1
+                filled_f, prob = sample_semantics(f, base_semantics, "prior", sym_fs[1].definition)
+                push!(probs, prob)
+                if filled_f.definition != ""
+                    sym_count += 1
+                end
+            end
+        end
+    end
+
     # println(probs)
     final_prob = foldl(*, probs, init=1.0)
+
+    if length(all_functions) < length(all_functions_with_sym) && sym_count == acc_count
+       final_prob = final_prob * 2
+    end
 
     return all_functions, final_prob
 end
 
-function compute_prior_probability(all_functions)
+function compute_prior_probability(all_functions_with_sym)
     probs = []
+
+    # group all functions including symmetries by type signature
+    type_signature_groups = Dict()
+    for f in all_functions_with_sym
+        type_signature = string(f.arg_types)
+        if type_signature in keys(type_signature_groups)
+            push!(type_signature_groups[type_signature], f)
+        else
+            type_signature_groups[type_signature] = [f]
+        end
+    end
+
+    all_functions = []
+    first_pairs = []
+    second_pairs = []
+    for k in keys(type_signature_groups)
+        fs = sort(type_signature_groups[k], by=x -> x.name)
+        if length(fs) > 1
+            push!(first_pairs, fs[1])
+            push!(second_pairs, fs[2])
+        else 
+            push!(all_functions, fs[1])
+        end
+    end
+
+    synthesized_first_pairs = filter(x -> x.definition != "", first_pairs)
+    synthesized_second_pairs = filter(x -> x.definition != "", second_pairs)
+    if length(synthesized_first_pairs) >= length(synthesized_second_pairs)
+        push!(all_functions, first_pairs...)
+        other_pairs = second_pairs
+        chosen_pairs = first_pairs
+    else
+        push!(all_functions, second_pairs...)
+        other_pairs = first_pairs
+        chosen_pairs = second_pairs
+    end
+
+    if length(all_functions) != length(all_functions_with_sym)
+        push!(probs, 0.5)
+    end
 
     synthesized_funcs = filter(x -> x.definition != "", all_functions)
     num_synthesized_funcs = length(synthesized_funcs)
@@ -81,8 +172,31 @@ function compute_prior_probability(all_functions)
     end
 
     # TODO: handle 'compressability' aspect of prior
+    if length(all_functions) < length(all_functions_with_sym)
+        for i in 1:length(other_pairs)
+            chosen_func = chosen_pairs[i]
+            sym_func = other_pairs[i] 
+            if chosen_func.definition != ""
+                if sym_func.definition == ""
+                    old_definition = sym_func.definition
+                    sym_func.definition = "done"
+                    filled_f, prob = sample_semantics(sym_func, base_semantics, "prior", chosen_func.definition)    
+                    sym_func.definition = old_definition
+                else
+                    filled_f, prob = sample_semantics(sym_func, base_semantics, "prior", chosen_func.definition)
+                end
+                push!(probs, prob)
+            end
+        end
+    end
+
+    final_prob = foldl(*, probs, init=1.0)
+    if length(all_functions) < length(all_functions_with_sym) && length(synthesized_first_pairs) == length(synthesized_second_pairs)
+        final_prob = final_prob * 2
+    end
+
     # println(probs)
-    return foldl(*, probs, init=1.0)
+    return final_prob
 end
 
 function sample_function_subset(all_functions, subset_size, mode="prior")
@@ -175,33 +289,98 @@ function compute_function_subset_weight_scores(all_functions, mode="prior")
     return weights .* 1/sum(weights)
 end
 
-function sample_semantics(function_sig, base_semantics, mode="prior")
+function sample_semantics(function_sig, base_semantics, mode="prior", context="", remove_sym="")
     possible_semantics = generate_all_semantics(function_sig, base_semantics)
+    if remove_sym != "" 
+        possible_semantics = filter(x -> x != remove_sym, possible_semantics)
+    end
     # @show possible_semantics
 
     # sample from set of possible semantics, biasing shorter semantics
-    if mode == "prior"
-        alpha = alpha_semantics_size        
-    elseif mode == "proposal"
-        alpha = 1.0
+    if context == ""
+        if mode == "prior"
+            alpha = alpha_semantics_size        
+        elseif mode == "proposal"
+            alpha = 1.0
+        end
+        semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
+        semantics_weights = semantics_weights .* 1/sum(semantics_weights)
+        if function_sig.definition == ""
+            final_semantics = sample(possible_semantics, ProbabilityWeights(semantics_weights))
+            function_sig.definition = final_semantics
+        end
+
+        index = findall(x -> x == function_sig.definition, possible_semantics)[1]
+
+        # println("SEMANTICS_WEIGHTS")
+        # println(possible_semantics)
+        # println(semantics_weights)
+        # println(index)
+
+        prob = semantics_weights[index] 
+        println(function_sig.definition)
+        return (function_sig, prob)
+    else
+        # generate symmetric version
+        symmetries = [
+            ["next", "prev"],
+            ["<", ">"],
+            ["wall1", "wall2"]
+        ]
+        symmetric_definition = context
+        for pair in symmetries 
+            symmetric_definition = symmetric_replace(symmetric_definition, pair)
+        end
+
+        if function_sig.definition == ""
+            # generate and compute associated probability
+            if symmetric_definition == context || !(symmetric_definition in possible_semantics)
+                if rand() < alpha_empty_symmetry 
+                    return (function_sig, alpha_empty_symmetry)
+                else
+                    function_sig, prob = sample_semantics(function_sig, base_semantics, mode)
+                    return (function_sig, prob * (1 - alpha_empty_symmetry))
+                end
+            else # symmetric definition exists in possible_semantics
+                if rand() < alpha_empty_symmetry 
+                    return (function_sig, alpha_empty_symmetry)
+                else
+                    if rand() < alpha_symmetry_over_non_symmetry
+                        function_sig.definition = symmetric_definition 
+                        return (function_sig, (1 - alpha_empty_symmetry) * alpha_symmetry_over_non_symmetry)
+                    else
+                        function_sig, prob = sample_semantics(function_sig, base_semantics, mode, "", symmetric_definition)
+                        return (function_sig, (1 - alpha_empty_symmetry) * (1 - alpha_symmetry_over_non_symmetry) * prob)
+                    end
+                end
+            end
+        else
+            # compute probability of existing definition
+            if function_sig.definition == "done" # unfilled
+                return (function_sig, alpha_empty_symmetry)
+            elseif symmetric_definition == context || !(symmetric_definition in possible_semantics)
+                function_sig, prob = sample_semantics(function_sig, base_semantics, mode)
+                return (function_sig, prob * (1 - alpha_empty_symmetry))
+            elseif function_sig.definition == symmetric_definition 
+                return (function_sig, (1 - alpha_empty_symmetry) * alpha_symmetry_over_non_symmetry)
+            else # filled with a non-symmetric definition
+                function_sig, prob = sample_semantics(function_sig, base_semantics, mode, "", symmetric_definition)
+                return (function_sig, (1 - alpha_empty_symmetry) * (1 - alpha_symmetry_over_non_symmetry) * prob)
+            end
+
+        end
+
     end
-    semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
-    semantics_weights = semantics_weights .* 1/sum(semantics_weights)
-    if function_sig.definition == ""
-        final_semantics = sample(possible_semantics, ProbabilityWeights(semantics_weights))
-        function_sig.definition = final_semantics
+end
+
+function symmetric_replace(definition, pair)
+    new_definition = definition
+    if occursin(pair[1], definition) 
+        new_definition = replace(new_definition, pair[1] => pair[2])        
+    elseif occursin(pair[2], definition)
+        new_definition = replace(new_definition, pair[2] => pair[1])
     end
-
-    index = findall(x -> x == function_sig.definition, possible_semantics)[1]
-
-    # println("SEMANTICS_WEIGHTS")
-    # println(possible_semantics)
-    # println(semantics_weights)
-    # println(index)
-
-    prob = semantics_weights[index] 
-    println(function_sig.definition)
-    (function_sig, prob)
+    new_definition
 end
 
 function generate_all_semantics(function_sig, base_semantics)
@@ -685,7 +864,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function]
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
@@ -705,10 +884,10 @@ test_config_names = [
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    "square_room_blue_wall_far-left-corner_prize.json"
+    # "square_room_blue_wall_far-left-corner_prize.json"
     ]
 
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # println("PRIOR ONE")
 # println(compute_prior_probability(all_function_sigs))
