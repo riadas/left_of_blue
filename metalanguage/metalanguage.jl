@@ -58,6 +58,7 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
             s = generate_semantics(partial_function_signature, current_semantics_cfg)
             push!(partial_semantics, s)
         end
+        sort!(partial_semantics, by=length) # PATCH
 
         return "$(partial_semantics[1]) && $(partial_semantics[2])"
     end
