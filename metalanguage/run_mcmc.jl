@@ -1,16 +1,14 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-<<<<<<< HEAD
 #global repeats = 1
-global test_name = "mcmc_$(repeats)_new_sem_space"
-global alpha_num_funcs = 0.0025 # 0.01, 0.5
+global test_name = "mcmc_$(repeats)_fourth_function"
+global alpha_num_funcs = 0.000025 # 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
 global base_semantics_str = ""
 global alpha_AST_weight = 10 # 10
 global alpha_arg_weight = 2 # 2
->>>>>>> b28edf3e8c1bf19b70dda010f3189e900019ba95
-global alpha_empty_prob = 0.0001
+global alpha_empty_prob = 0.9999 # 0.0001
 global first_decision_weights = Dict([
     "edit" => 3,
     "add" => 3, 
@@ -158,12 +156,6 @@ function compute_function_subset_weight_scores(all_functions, mode="prior")
         # @show min_possible_AST_size 
         num_args = length(func.arg_names)
         # @show num_args
-<<<<<<< HEAD
-        weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
-        # weight_score = min_possible_AST_size^alpha_AST_weight + num_args
-        # @show weight_score
-        weight_scores[format_new_function_string(func)] = weight_score
-=======
         if mode == "prior"
             weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
         else
@@ -174,7 +166,6 @@ function compute_function_subset_weight_scores(all_functions, mode="prior")
         # weight_scores[format_new_function_string(func)] = 1/weight_score
         weight_scores[format_new_function_string(func)] = weight_score
 
->>>>>>> b28edf3e8c1bf19b70dda010f3189e900019ba95
     end
     weights = map(x -> weight_scores[format_new_function_string(x)], all_functions)
     weights = weights .- minimum(weights) .+ 1
@@ -678,6 +669,9 @@ right_of_function_wall = Function("right_of", ["location_arg", "color_arg"], [Wa
 left_of_function_with_depth = Function("left_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
 right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
 
+left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
+right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
+
 all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
@@ -688,24 +682,26 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function]
 # # println(prob1)
 # # println(prob2)
 
-<<<<<<< HEAD
-test_config_names = ["rect_room_blue_wall_center_prize.json",  "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
-chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
-=======
 # test_config_names = ["rect_room_blue_wall_center_prize.json",  "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
 test_config_names = [
     "square_room_blue_wall_center_prize.json",
     "square_room_blue_wall_center_prize_copy1.json",
     "square_room_blue_wall_center_prize_copy2.json",  
-    "square_room_blue_wall_center_prize_copy3.json",  
+    "square_room_blue_wall_center_prize_copy3.json",
+    # "square_room_blue_wall_center_prize_copy4.json",
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
-    "spatial_lang_test_copy2_left_true_shift_0.json", 
-    "square_room_blue_wall_left_prize.json"
+    "spatial_lang_test_copy2_left_true_shift_0.json",
+    # "spatial_lang_test_copy3_left_true_shift_0.json",
+    "square_room_blue_wall_left_prize.json",
+    "square_room_blue_wall_far-left-corner_prize.json"
     ]
 
-chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
->>>>>>> b28edf3e8c1bf19b70dda010f3189e900019ba95
+chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+
+open("metalanguage/results/mcmc/trial14_tinier_prior_tiny_empty_prob_REPEAT/chain_$(repeats).txt", "w+") do f
+                              write(f, repr(chain))
+                            end
 
 # println("PRIOR ONE")
 # println(compute_prior_probability(all_function_sigs))
