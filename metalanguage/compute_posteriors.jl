@@ -11,7 +11,6 @@ all_function_sigs = [
 ]
 
 global repeats = parse(Int, ARGS[1])
-
 possible_semantics = []
 
 for function_sig in all_function_sigs 
@@ -22,6 +21,16 @@ end
 
 all_permutations = [Iterators.product(possible_semantics...)...]
 
+start_index = 1
+end_index = length(all_permutations)
+global test_name = "posterior_$(repeats)"
+if length(ARGS) > 1
+    start_index = parse(Int, ARGS[2]) + 1
+    step = parse(Int, ARGS[3])
+    end_index = start_index + step
+    global test_name = "$(ARGS[4])_repeats_$(repeats)"
+end
+
 println("length(all_permutations)")
 println(length(all_permutations))
 
@@ -29,7 +38,7 @@ all_results = []
 
 global max_elt = []
 # @show max_elt
-for p_idx in 1:length(all_permutations)
+for p_idx in start_index:end_index
     @show p_idx
     p = all_permutations[p_idx]
     # @show max_elt
@@ -61,9 +70,24 @@ for p_idx in 1:length(all_permutations)
     push!(all_results, result)
 end
 
-reverse!(sort!(all_results, by=x -> x[2]))
-
 println(max_elt)
+
+global old_results = []
+global old_max_elt = []
+if length(ARGS) > 1 && start_index != 1 
+    open("metalanguage/posteriors/posterior_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "r") do f 
+        global old_results = eval(Meta.parse(read(f, String)))
+    end
+
+    open("metalanguage/posteriors/map_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "r") do f 
+        global max_elt = eval(Meta.parse(read(f, String)))
+    end
+end
+
+all_results = vcat(old_results..., all_results...)
+max_elt = old_max_elt > max_elt ? old_max_elt : max_elt
+
+reverse!(sort!(all_results, by=x -> x[2]))
 
 open("metalanguage/posteriors/posterior_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "w+") do f 
     write(f, string(all_results))
