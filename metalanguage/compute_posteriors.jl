@@ -10,7 +10,7 @@ all_function_sigs = [
     # right_of_opposite_function,
 ]
 
-global repeats = 2
+global repeats = parse(Int, ARGS[1])
 
 possible_semantics = []
 
@@ -65,10 +65,10 @@ reverse!(sort!(all_results, by=x -> x[2]))
 
 println(max_elt)
 
-open("metalanguage/posteriors/posterior_$(length(all_function_sigs)_functions_$(repeats)_repeats.txt)", "w+") do f 
+open("metalanguage/posteriors/posterior_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "w+") do f 
     write(f, string(all_results))
 end
 
-open("metalanguage/posteriors/map_$(length(all_function_sigs)_functions_$(repeats)_repeats.txt)", "w+") do f 
+open("metalanguage/posteriors/map_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "w+") do f 
     write(f, string(max_elt))
 end
