@@ -14,8 +14,8 @@ for ((i=0; i<$num_outer_loop_iters; i++))
 do
     echo "outer loop iter $i out of $num_outer_loop_iters"
     if [[ $i == 0 ]]; then
-        julia metalanguage/run_mcmc_with_intermediates.jl $repeats $step "$4.txt" true
+        /scratch/riadas/julia-1.9.4/bin/julia metalanguage/run_mcmc_with_intermediates.jl $repeats $step "${test_name}_repeats_${repeats}.txt" true
     else
-        julia metalanguage/run_mcmc_with_intermediates.jl $repeats $step "$4.txt" false
+        /scratch/riadas/julia-1.9.4/bin/julia metalanguage/run_mcmc_with_intermediates.jl $repeats $step "${test_name}_repeats_${repeats}.txt" false
     fi
 done
