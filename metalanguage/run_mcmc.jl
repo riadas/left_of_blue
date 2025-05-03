@@ -36,19 +36,22 @@ function generative_prior(all_functions_with_sym)
     end
 
     all_functions = []
-    choose_first = rand() < 0.5
     for k in keys(type_signature_groups)
         fs = sort(type_signature_groups[k], by=x -> x.name)
-        if choose_first 
-            push!(all_functions, fs[1])
-        else
-            push!(all_functions, fs[end])
+        if length(fs) > 1
+            if rand() < 0.5
+                push!(all_functions, fs[1])
+            else
+                push!(all_functions, fs[end])
+            end
+            push!(probs, 0.5)
         end
     end
 
-    if length(all_functions) != length(all_functions_with_sym)
-        push!(probs, 0.5)
-    end
+    # if length(all_functions) != length(all_functions_with_sym)
+    #     push!(probs, 0.5)
+    # end
+    
 
     # generate subset of functions to fill
     total_num_functions = length(all_functions)
@@ -102,8 +105,18 @@ function generative_prior(all_functions_with_sym)
     # println(probs)
     final_prob = foldl(*, probs, init=1.0)
 
-    if length(all_functions) < length(all_functions_with_sym) && sym_count == acc_count
-       final_prob = final_prob * 2
+    # if length(all_functions) < length(all_functions_with_sym) && sym_count == acc_count
+    #    final_prob = final_prob * 2
+    # end
+    for k in keys(type_signature_groups)
+        fs = type_signature_groups[k]
+        if length(fs) > 1
+            both_empty = fs[1].definition == "" && fs[2].definition == ""
+            both_filled = fs[1].definition != "" && fs[2].definition != ""
+            if both_empty || both_filled 
+                final_prob = final_prob * 2
+            end
+        end
     end
 
     return all_functions, final_prob
@@ -127,7 +140,7 @@ function compute_prior_probability(all_functions_with_sym)
     first_pairs = []
     second_pairs = []
     for k in keys(type_signature_groups)
-        fs = sort(type_signature_groups[k], by=x -> x.name)
+        fs = reverse(sort(type_signature_groups[k], by=x -> length(x.definition)))
         if length(fs) > 1
             push!(first_pairs, fs[1])
             push!(second_pairs, fs[2])
@@ -148,9 +161,11 @@ function compute_prior_probability(all_functions_with_sym)
         chosen_pairs = second_pairs
     end
 
-    if length(all_functions) != length(all_functions_with_sym)
-        push!(probs, 0.5)
-    end
+    # if length(all_functions) != length(all_functions_with_sym)
+    #     push!(probs, 0.5)
+    # end
+
+    push!(probs, 0.5^(length(first_pairs)))
 
     synthesized_funcs = filter(x -> x.definition != "", all_functions)
     num_synthesized_funcs = length(synthesized_funcs)
@@ -191,8 +206,19 @@ function compute_prior_probability(all_functions_with_sym)
     end
 
     final_prob = foldl(*, probs, init=1.0)
-    if length(all_functions) < length(all_functions_with_sym) && length(synthesized_first_pairs) == length(synthesized_second_pairs)
-        final_prob = final_prob * 2
+    # if length(all_functions) < length(all_functions_with_sym) && length(synthesized_first_pairs) == length(synthesized_second_pairs)
+    #     final_prob = final_prob * 2
+    # end
+
+    for k in keys(type_signature_groups)
+        fs = type_signature_groups[k]
+        if length(fs) > 1
+            both_empty = fs[1].definition == "" && fs[2].definition == ""
+            both_filled = fs[1].definition != "" && fs[2].definition != ""
+            if both_empty || both_filled 
+                final_prob = final_prob * 2
+            end
+        end
     end
 
     # println(probs)
@@ -327,9 +353,9 @@ function sample_semantics(function_sig, base_semantics, mode="prior", context=""
             ["<", ">"],
             ["wall1", "wall2"]
         ]
-        symmetric_definition = ""
+        symmetric_definition = context
         for pair in symmetries 
-            symmetric_definition = symmetric_replace(context, pair)
+            symmetric_definition = symmetric_replace(symmetric_definition, pair)
         end
 
         if function_sig.definition == ""
@@ -864,7 +890,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function_spot] # left_of_opposite_function
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
@@ -904,11 +930,11 @@ test_config_names = [
 
 # at_function.definition = "location_arg.color == color_arg"
 # my_left_function_spot.definition = "location_arg.position.x < 0"
-# left_of_function.definition = "location_arg.wall2.color == color_arg"
-# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function_spot] # left_of_opposite_function
+# right_of_function.definition = "next(location_arg, locations).color == color_arg"
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # current_state = deepcopy(all_function_sigs)
-# my_right_function_spot.definition = "location_arg.position.x > 0"
+# left_of_function.definition = "prev(location_arg, locations).color == color_arg"
 # proposed_state = deepcopy(all_function_sigs)
 
 # println("----- PRIOR")
