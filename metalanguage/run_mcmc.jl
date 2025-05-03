@@ -1,7 +1,7 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 10
+global repeats = 11
 global test_name = "mcmc_$(repeats)_new_sem_space_y"
 global alpha_num_funcs = 0.000025 # 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
@@ -864,7 +864,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function_spot] # left_of_opposite_function
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
