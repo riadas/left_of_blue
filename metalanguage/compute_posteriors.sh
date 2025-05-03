@@ -6,7 +6,6 @@ test_name=$3
 num_outer_loop_iters=$((21870/step))
 
 echo "repeats=$repeats"
-echo "iters=$iters" 
 echo "step=$step"
 
 for ((i=0; i<$num_outer_loop_iters; i++))

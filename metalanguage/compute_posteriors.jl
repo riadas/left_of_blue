@@ -84,7 +84,7 @@ if length(ARGS) > 1 && start_index != 1
     end
 end
 
-all_results = vcat(old_results..., all_results...)
+all_results = vcat(old_results, all_results)
 max_elt = old_max_elt > max_elt ? old_max_elt : max_elt
 
 reverse!(sort!(all_results, by=x -> x[2]))
