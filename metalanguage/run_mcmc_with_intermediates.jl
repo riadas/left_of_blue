@@ -4,12 +4,14 @@ test_config_names = [
     "square_room_blue_wall_center_prize.json",
     "square_room_blue_wall_center_prize_copy1.json",
     "square_room_blue_wall_center_prize_copy2.json",  
-    "square_room_blue_wall_center_prize_copy3.json",  
+    "square_room_blue_wall_center_prize_copy3.json", 
+    "square_room_blue_wall_center_prize_copy4.json",   
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
-    "spatial_lang_test_copy2_left_true_shift_0.json", 
+    "spatial_lang_test_copy2_left_true_shift_0.json",
+    "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-#    "square_room_blue_wall_far-left-corner_prize.json"
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
 global repeats = parse(Int, ARGS[1])

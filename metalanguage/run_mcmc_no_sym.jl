@@ -1,7 +1,7 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 1
+global repeats = 9
 global test_name = "mcmc_$(repeats)_fourth_function"
 global alpha_num_funcs = 0.0000025 # 0.000025, 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
@@ -711,7 +711,7 @@ test_config_names = [
     "square_room_blue_wall_far-left-corner_prize.json"
     ]
 
-#chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
+chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
 #open("metalanguage/results/mcmc/trial14_tinier_prior_tiny_empty_prob_REPEAT/chain_$(repeats).txt", "w+") do f
 #                              write(f, repr(chain))

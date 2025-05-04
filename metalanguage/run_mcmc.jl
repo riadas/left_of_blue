@@ -3,12 +3,12 @@ using StatsBase
 using Combinatorics
 global repeats = 11
 global test_name = "mcmc_$(repeats)_new_sem_space_y"
-global alpha_num_funcs = 0.000025 # 0.0025, 0.01, 0.5
+global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
 global base_semantics_str = ""
 global alpha_AST_weight = 10 # 10
-global alpha_arg_weight = 2 # 2
-global alpha_empty_prob = 0.05 # 0.0001
+global alpha_arg_weight = 3 # 2
+global alpha_empty_prob = 0.9999 # 0.0001
 global alpha_empty_symmetry = 0.4
 global alpha_symmetry_over_non_symmetry = 0.95
 global first_decision_weights = Dict([
@@ -890,7 +890,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
@@ -900,18 +900,78 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_ri
 # # println(prob1)
 # # println(prob2)
 
+
+
 # test_config_names = ["rect_room_blue_wall_center_prize.json",  "spatial_lang_test_left_true_shift_0.json", "rect_room_blue_wall_left_prize.json"]
 test_config_names = [
     "square_room_blue_wall_center_prize.json",
     "square_room_blue_wall_center_prize_copy1.json",
     "square_room_blue_wall_center_prize_copy2.json",  
-    "square_room_blue_wall_center_prize_copy3.json",  
+    "square_room_blue_wall_center_prize_copy3.json", 
+    "square_room_blue_wall_center_prize_copy4.json",   
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
-    "spatial_lang_test_copy2_left_true_shift_0.json", 
+    "spatial_lang_test_copy2_left_true_shift_0.json",
+    "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    # "square_room_blue_wall_far-left-corner_prize.json"
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
+
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function] # left_of_opposite_function
+# results = []
+# for r in 1:20
+#     println("REPEATS = $(r)")
+#     all_function_sigs_copy = deepcopy(all_function_sigs)
+
+#     prior0 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood0 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior0 = prior0 * likelihood0
+
+#     all_function_sigs_copy[1].definition = "location_arg.color == color_arg"
+#     prior1 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood1 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior1 = prior1 * likelihood1
+
+#     all_function_sigs_copy[2].definition = "location_arg.position.x < 0"
+#     prior2 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood2 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior2 = prior2 * likelihood2
+
+#     all_function_sigs_copy[3].definition = "location_arg.wall2.color == color_arg"
+#     prior3 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood3 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior3 = prior3 * likelihood3
+
+#     all_function_sigs_copy[3].definition = ""
+#     all_function_sigs_copy[4].definition = "location_arg.wall2.color == color1_arg && location_arg.wall1.color == color2_arg"
+#     prior4 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood4 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior4 = prior4 * likelihood4
+
+#     all_function_sigs_copy[3].definition = "location_arg.wall2.color == color_arg"
+#     all_function_sigs_copy[4].definition = "prev(prev(location_arg, locations), locations).wall1.color == color1_arg && location_arg.wall2.color == color2_arg"
+#     prior5 = compute_prior_probability(all_function_sigs_copy)
+#     likelihood5 = compute_likelihood(all_function_sigs_copy, test_config_names, r)
+#     posterior5 = prior5 * likelihood5
+
+#     all_posteriors = [posterior0, posterior1, posterior2, posterior3, posterior4, posterior5]
+#     max_posterior = maximum(all_posteriors)
+#     normalized_max_posterior = maximum(all_posteriors) / sum(all_posteriors)
+
+#     push!(results, [r, normalized_max_posterior, [prior0, likelihood0, posterior0], [prior1, likelihood1, posterior1], [prior2, likelihood2, posterior2], [prior3, likelihood3, posterior3], [prior4, likelihood4, posterior4], [prior5, likelihood5, posterior5]])
+# end
+
+# for tup in results 
+#     println("----- REPEATS = $(tup[1]) -----")
+#     println("normalized max posterior = $(tup[2])")
+#     for i in 3:length(tup)
+#         t = tup[i]
+#         println("prior$(i - 3) = $(t[1])")
+#         println("likelihood$(i - 3) = $(t[2])")
+#         println("posterior$(i - 3) = $(t[3])")
+#         println("-----")
+#     end
+# end
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 

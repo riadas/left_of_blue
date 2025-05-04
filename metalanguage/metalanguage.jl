@@ -337,7 +337,7 @@ function genComparison_semantics(arg_names::Vector{String}, arg_types::Vector{Da
     end
 end
 
-function format_new_function_string(function_sig)
+function format_new_function_string(function_sig, replace_empty_with_true=false)
     typed_args = []
     for i in 1:length(function_sig.arg_names)
         arg_name = function_sig.arg_names[i]
@@ -345,10 +345,17 @@ function format_new_function_string(function_sig)
         typed_arg = "$(arg_name)::$(arg_type)"
         push!(typed_args, typed_arg)
     end
-    """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
-        $(function_sig.definition)
+    if function_sig.definition == "" && replace_empty_with_true
+        """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
+            true
+        end
+        """
+    else
+        """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
+            $(function_sig.definition)
+        end
+        """
     end
-    """
 end
 
 function Base.size(x::Expr)
