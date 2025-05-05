@@ -986,7 +986,7 @@ global possible_semantics_dict = Dict()
 for func in all_function_sigs 
     possible_semantics = []
     for i in 1:10000
-        semantics = generate_semantics(function_sig, base_semantics)
+        semantics = generate_semantics(func, base_semantics)
         push!(possible_semantics, semantics)
     end
     possible_semantics_dict[func.name] = unique(possible_semantics)
