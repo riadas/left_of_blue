@@ -716,12 +716,12 @@ function coordExpressions(function_sig)
     end
 end
 
-function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions, test_configs=[], suffix="unordered_analogy")
+function evaluate_semantics(function_sig, definition, category_assignment, level_base_semantics_str, updated_syntax, max_language_augmented_AST_size, all_functions, test_configs=[], suffix="unordered_analogy", replace_empty_with_true=false, return_best_funcs=false)
     # println("-- trying definition")
     # println(definition)
     if !isnothing(function_sig)
         function_sig.definition = definition
-        new_function_definition_str = format_new_function_string(function_sig)
+        new_function_definition_str = format_new_function_string(function_sig, replace_empty_with_true)
     
         # update semantics.jl file with new function and import file
         new_semantics_str = join([level_base_semantics_str, new_function_definition_str], "\n")
@@ -760,13 +760,14 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
 
     scores = Dict()
     search_locations = Dict()
+    best_programs_dict = Dict()
     temp_semantics = []
     using_temp_semantics = false
     for config_name in config_names
         # all non-control input spatial problems
-        if !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) # && !occursin("utterance", config_name)
-            # # println("--- CONFIG NAME")
-            # # println(config_name)            
+        if test_configs != [] || !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) # && !occursin("utterance", config_name)
+            println("--- CONFIG NAME")
+            println(config_name)            
             # if occursin("utterance", config_name)
             #     t = replace(split(config_name, "utterance_")[end], ".json" => "")
             #     if !seen_utterance[t]
@@ -800,16 +801,20 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
             end
             programs = unique(programs)
             programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)) && !occursin("white, white)", x), programs) # PATCH
-            
+            if occursin("far-left-corner", config_name) || occursin("far-right-corner", config_name)
+                programs = filter(x -> occursin("white", x), programs)
+            end
+            @show programs 
             using_temp_semantics = false
             temp_program = ""
             temp_func = nothing
-            if occursin("utterance", config_name) && (occursin("green", config_name) && !occursin("next", scene.utterance) || occursin("spatial", config_name)) && max_language_augmented_AST_size != 0
+            if occursin("utterance", config_name) && (occursin("green", config_name) && !occursin("next", scene.utterance) || occursin("spatial", config_name) || occursin("room", config_name) && !occursin("control", config_name) && !occursin("salient", config_name)) && max_language_augmented_AST_size != 0
                 new_func = nothing
                 if occursin("green", config_name) # red-green test
                     new_func, new_program = translate_from_NL_and_image(scene, all_functions, max_language_augmented_AST_size)
                 elseif occursin("room", config_name)
                     _, new_program = translate_from_NL(scene, all_functions, max_language_augmented_AST_size)
+                    println(new_program)
                     if new_program != ""
                         programs = map(x -> "$(x) $(new_program)", programs)
                     end
@@ -825,8 +830,11 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                     if occursin(new_func_str_first_line, new_semantics_str)
                         prefix = split(new_semantics_str, new_func_str_first_line)[1]
                         suffix_unedited = split(new_semantics_str, new_func_str_first_line)[end]
-                        suffix = split(suffix_unedited,"\nend")[end]
-                        new_semantics_str = join([prefix, new_func_str, suffix], "\n")
+                        suffix_ = split(suffix_unedited,"\nend")[end]
+                        new_semantics_str = join([prefix, new_func_str, suffix_], "\n")
+                        open("metalanguage/intermediate_outputs/intermediate_semantics_$(suffix).jl", "w+") do f 
+                            write(f, new_semantics_str)
+                        end
                     else
                         new_semantics_str = join([new_semantics_str, new_func_str], "\n")
                         open("metalanguage/intermediate_outputs/intermediate_semantics_$(suffix).jl", "w+") do f 
@@ -911,6 +919,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 if results == []
                     scores[config_name] = 1/3
                     search_locations[config_name] = scene.locations
+                    best_programs_dict[config_name] = ""
                 else
                     programs_and_results = sort([zip(programs, results)...], by=tup -> length(tup[1]))
                     program, res = programs_and_results[end]
@@ -923,12 +932,13 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                         scores[config_name] = 1/length(res)
                         search_locations[config_name] = res
                     elseif length(res) == 0
-                        scores[config_name] = 1/3
+                        scores[config_name] = 0 # 1/3
                         search_locations[config_name] = scene.locations
                     else
                         scores[config_name] = 0
                         search_locations[config_name] = res
                     end 
+                    best_programs_dict[config_name] = program
                 end
             else
                 programs_and_results = [zip(programs, results)...]
@@ -939,13 +949,16 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 # println(best_programs)
                 sort!(best_programs, by=tup -> size(Meta.parse(tup[1])))
                 best_program, locations_to_search = best_programs[1]
-
+                
                 
                 if best_program == temp_program
                     push!(temp_semantics, temp_func)
                 end
                 println("best_program")
                 println(best_program)
+
+                best_programs_dict[config_name] = best_program
+
                 # println("temp_program")
                 # println(temp_program)
                 # # println(locations_to_search)
@@ -993,7 +1006,11 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     end
 
     total_score = sum([values(scores)...])
-    return (round(total_score, digits=6), scores, search_locations, temp_semantics)
+    if !return_best_funcs 
+        return (round(total_score, digits=6), scores, search_locations, temp_semantics)
+    else
+        return (round(total_score, digits=6), scores, search_locations, temp_semantics, best_programs_dict)
+    end
 end
 
 function save_results(sig_key, level_best_info, category_assignment, save_folder_name, save_dir_path_combined, new_split_folder_created, new_function_definition_str)

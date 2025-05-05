@@ -1,5 +1,6 @@
 include("run_unordered_analogy.jl")
 include("plot_scatter.jl")
+include("generate_all_plots.jl")
 using Plots 
 
 age_groups = [1, 2, 3, 4]
@@ -68,6 +69,24 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
         3 => "4-6 years",
         4 => "6+ years",
     ])
+
+    all_correlation_dicts = Dict()
+    for map_estimate_str in map_estimates 
+        l = filter(x -> x.definition != "", eval(Meta.parse(map_estimate_str)))
+        if l == [] 
+            l = "geo"
+        else
+            l = l[end].name
+        end
+
+        correlation_dict = generate_correlation_dict(eval(Meta.parse(map_estimate_str)), empirical_data, false)
+        all_correlation_dicts[l] = correlation_dict
+
+        if l == "my_left"
+            correlation_dict = generate_correlation_dict(eval(Meta.parse(map_estimate_str)), empirical_data, true)
+            all_correlation_dicts["my_left_lang"] = correlation_dict
+        end
+    end
 
     if mode == "proportion"
     
@@ -144,9 +163,9 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
             for age_group in age_groups 
                 if length(names) > 1 && names[end - 1] == "my_left"
                     println("hello")
-                    vals = correlation_dict[("my_left_lang", age_group)]
+                    vals = all_correlation_dicts["my_left_lang"][age_group]
                 else
-                    vals = correlation_dict[(l, age_group)]
+                    vals = all_correlation_dicts[l][age_group]
                 end
                 c = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
                 c = c * c
@@ -202,15 +221,15 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
                         println("hello 1")
                         if l == "my_left"
                             println("hello 2")
-                            vals = correlation_dict[("my_left_lang", age_group)]
+                            vals = all_correlation_dicts["my_left_lang"][age_group]
                             prop = 1.0
                         else
-                            vals = correlation_dict[(l, age_group)]
+                            vals = all_correlation_dicts[l][age_group]
                             prop = 0.0
                         end
                         # prop = plot_data[map_estimate][t - 1] / sums[t - 1]
                     else
-                        vals = correlation_dict[(l, age_group)]
+                        vals = all_correlation_dicts[l][age_group]
                         prop = plot_data[map_estimate][t] / sums[t]
                     end
 
@@ -237,6 +256,8 @@ function plot_relative_proportions(chains, mode="proportion", save_suffix="")
         ylabel!("R^2", yguidefontsize=9)
         title!("Correlation between Weighted Spatial LoT Model Predictions\nand Empirical Results vs. Training Data Volume", titlefontsize=10)
 
+    elseif mode == "scatter"
+        p = plot_scatter(all_correlation_dicts)
     end
 
     if save_suffix != ""
@@ -263,3 +284,4 @@ p = plot_relative_proportions(chains, "rank", trial_name)
 p = plot_relative_proportions(chains, "proportion", trial_name)
 p = plot_relative_proportions(chains, "correlation_map", trial_name)
 p = plot_relative_proportions(chains, "correlation_avg", trial_name)
+p = plot_relative_proportions(chains, "scatter", trial_name)
