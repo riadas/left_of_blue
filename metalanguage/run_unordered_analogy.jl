@@ -799,7 +799,7 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 push!(programs, program)
             end
             programs = unique(programs)
-            programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)), programs) # PATCH
+            programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)) && !occursin("white, white)", x), programs) # PATCH
             
             using_temp_semantics = false
             temp_program = ""
