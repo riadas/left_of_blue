@@ -444,11 +444,11 @@ function has_cycle(start_function_sig, start_definition)
 end
 
 function generate_all_semantics(function_sig, base_semantics, exclude_libs=false)
-    possible_semantics = []
-    for i in 1:1000 # 6000
-        semantics = generate_semantics(function_sig, base_semantics)
-        push!(possible_semantics, semantics)
-    end
+    possible_semantics = copy(possible_semantics_dict[function_sig.name])
+    # for i in 1:1000 # 6000
+    #     semantics = generate_semantics(function_sig, base_semantics)
+    #     push!(possible_semantics, semantics)
+    # end
     possible_semantics = unique(possible_semantics)
     # println(possible_semantics)
 
@@ -893,6 +893,16 @@ function run_mcmc(initial_state, test_config_names=[], iters=1000, repeats=1, in
         global base_semantics = update_semantics_cfg(base_semantics, function_sig)
     end
 
+    for func in all_function_sigs 
+        possible_semantics = []
+        for i in 1:10000
+            semantics = generate_semantics(func, base_semantics)
+            push!(possible_semantics, semantics)
+        end
+        global possible_semantics_dict[func.name] = unique(possible_semantics)
+    end
+    
+
     println("new base_semantics")
     println(base_semantics)
 
@@ -978,8 +988,10 @@ test_config_names = [
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    # "square_room_blue_wall_far-left-corner_prize.json"
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
+
+global possible_semantics_dict = Dict()
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
