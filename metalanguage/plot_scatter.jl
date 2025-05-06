@@ -1,6 +1,14 @@
 using Plots 
 using Statistics
 
+function std_err(xs, ys)
+    s = 0
+    for i in 1:length(xs)
+        s += (xs[i] - ys[i])^2
+    end
+    sqrt(s)/length(xs)
+end
+
 # geocentric plot 
 vals1 = [
     (0.5, 19/48), # all white, rectangle
@@ -370,7 +378,7 @@ function plot_scatter(all_correlation_dicts)
     plots = []
     diagonals = [1, 6, 11, 16]
     for age_group_id in 1:num_age_groups 
-        for model_id in ["geo", "my_left", "my_left_lang", "left_of"] 
+        for model_id in ["geo", "my_right", "my_right_lang", "right_of"] 
             vals = all_correlation_dicts[model_id][age_group_id]
             r = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
             c = r < 0 ? 0 : r
@@ -399,40 +407,32 @@ function plot_scatter(all_correlation_dicts)
     return p
 end
 
-# function std_err(xs, ys)
-#     s = 0
-#     for i in 1:length(xs)
-#         s += (xs[i] - ys[i])^2
-#     end
-#     sqrt(s)/length(xs)
-# end
+correlation_dict = Dict([
+    ("geo", 1) => vals1,
+    ("geo", 2) => vals3_1,
+    ("geo", 3) => vals4_1,
+    ("geo", 4) => vals5_1,
 
-# correlation_dict = Dict([
-#     ("geo", 1) => vals1,
-#     ("geo", 2) => vals3_1,
-#     ("geo", 3) => vals4_1,
-#     ("geo", 4) => vals5_1,
+    ("at", 1) => vals1_2,
+    ("at", 2) => vals3_2,
+    ("at", 3) => vals4_2,
+    ("at", 4) => vals5_2,
 
-#     ("at", 1) => vals1_2,
-#     ("at", 2) => vals3_2,
-#     ("at", 3) => vals4_2,
-#     ("at", 4) => vals5_2,
+    ("my_right", 1) => vals1_3,
+    ("my_right", 2) => vals3,
+    ("my_right", 3) => vals4_3,
+    ("my_right", 4) => vals5_3,
 
-#     ("my_left", 1) => vals1_3,
-#     ("my_left", 2) => vals3,
-#     ("my_left", 3) => vals4_3,
-#     ("my_left", 4) => vals5_3,
+    ("my_right_lang", 1) => vals1_4,
+    ("my_right_lang", 2) => vals3_4,
+    ("my_right_lang", 3) => vals4,
+    ("my_right_lang", 4) => vals5_4,
 
-#     ("my_left_lang", 1) => vals1_4,
-#     ("my_left_lang", 2) => vals3_4,
-#     ("my_left_lang", 3) => vals4,
-#     ("my_left_lang", 4) => vals5_4,
-
-#     ("left_of", 1) => vals1_5,
-#     ("left_of", 2) => vals3_5,
-#     ("left_of", 3) => vals4_5,
-#     ("left_of", 4) => vals5,
-# ])
+    ("right_of", 1) => vals1_5,
+    ("right_of", 2) => vals3_5,
+    ("right_of", 3) => vals4_5,
+    ("right_of", 4) => vals5,
+])
 
 # plots = []
 # all_values = [vals1, vals2, vals3, vals4, vals5]

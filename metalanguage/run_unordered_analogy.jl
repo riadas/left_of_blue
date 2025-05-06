@@ -766,8 +766,8 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
     for config_name in config_names
         # all non-control input spatial problems
         if test_configs != [] || !occursin("no_blue", config_name) && !occursin(".DS_Store", config_name) # && !occursin("utterance", config_name)
-            println("--- CONFIG NAME")
-            println(config_name)            
+            # println("--- CONFIG NAME")
+            # println(config_name)            
             # if occursin("utterance", config_name)
             #     t = replace(split(config_name, "utterance_")[end], ".json" => "")
             #     if !seen_utterance[t]
@@ -802,9 +802,9 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
             programs = unique(programs)
             programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)) && !occursin("white, white)", x), programs) # PATCH
             if occursin("far-left-corner", config_name) || occursin("far-right-corner", config_name)
-                programs = filter(x -> occursin("white", x), programs)
+                programs = filter(x -> !((occursin("left", x) || occursin("right", x)) && !occursin("white", x)), programs)
             end
-            @show programs 
+            # @show programs 
             using_temp_semantics = false
             temp_program = ""
             temp_func = nothing
@@ -954,8 +954,8 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 if best_program == temp_program
                     push!(temp_semantics, temp_func)
                 end
-                println("best_program")
-                println(best_program)
+                # println("best_program")
+                # println(best_program)
 
                 best_programs_dict[config_name] = best_program
 

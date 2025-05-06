@@ -914,7 +914,7 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    "square_room_blue_wall_far-left-corner_prize.json"
+    # "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
 all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function] # left_of_opposite_function
