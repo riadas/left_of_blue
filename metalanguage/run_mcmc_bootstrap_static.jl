@@ -893,6 +893,16 @@ function run_mcmc(initial_state, test_config_names=[], iters=1000, repeats=1, in
         global base_semantics = update_semantics_cfg(base_semantics, function_sig)
     end
 
+    for func in all_function_sigs 
+        possible_semantics = []
+        for i in 1:10000
+            semantics = generate_semantics(func, base_semantics)
+            push!(possible_semantics, semantics)
+        end
+        global possible_semantics_dict[func.name] = unique(possible_semantics)
+    end
+    
+
     println("new base_semantics")
     println(base_semantics)
 
@@ -958,7 +968,7 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 left_of_opposite_function = Function("left_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 right_of_opposite_function = Function("right_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-global all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function, right_of_function] # left_of_opposite_function
+global all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
 # new_function_sigs, prob1 = generative_prior(all_function_sigs)
 # # at_function.definition = "location_arg.color == color_arg"
@@ -982,15 +992,6 @@ test_config_names = [
 ]
 
 global possible_semantics_dict = Dict()
-
-for func in all_function_sigs 
-    possible_semantics = []
-    for i in 1:10000
-        semantics = generate_semantics(func, base_semantics)
-        push!(possible_semantics, semantics)
-    end
-    possible_semantics_dict[func.name] = unique(possible_semantics)
-end
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
