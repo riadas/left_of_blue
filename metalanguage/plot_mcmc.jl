@@ -598,13 +598,13 @@ trial_name = "left_right_run2_repeats_"
 # chain_filenames = readdir("metalanguage/results/mcmc/$(trial_name)")
 chain_filenames = filter(x -> occursin(trial_name, x), readdir("metalanguage/intermediate_outputs/intermediate_chains"))
 chain_filenames = sort(chain_filenames, by=x -> parse(Int, replace(split(x, "_")[end], ".txt" => "")))
-chain_filenames = [chain_filenames[1:12]..., chain_filenames[14:15]...]
+# chain_filenames = [chain_filenames[1:12]..., chain_filenames[14:15]...]
 
 chains = []
 for chain_filename in chain_filenames #[1:10]
     open("metalanguage/intermediate_outputs/intermediate_chains/$(chain_filename)", "r") do f 
         text = read(f, String)
-        obj = eval(Meta.parse(text))[1000:end]
+        obj = eval(Meta.parse(text))[750:end]
         push!(chains, obj)
     end
 end
