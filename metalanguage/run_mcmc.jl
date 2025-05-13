@@ -11,6 +11,7 @@ global alpha_arg_weight = 3
 global alpha_empty_prob = 0.9999 # 0.0001
 global alpha_empty_symmetry = 0.4
 global alpha_symmetry_over_non_symmetry = 0.95
+global alpha_LR_uncertainty_bias = (0.5)^(4 * 7.5)
 global first_decision_weights = Dict([
     "edit" => 3,
     "add" => 3, 
@@ -317,6 +318,7 @@ end
 
 function sample_semantics(function_sig, base_semantics, mode="prior", context="", remove_sym="")
     possible_semantics = generate_all_semantics(function_sig, base_semantics)
+
     if remove_sym != "" 
         possible_semantics = filter(x -> x != remove_sym, possible_semantics)
     end
@@ -329,7 +331,16 @@ function sample_semantics(function_sig, base_semantics, mode="prior", context=""
         elseif mode == "proposal"
             alpha = 1.0
         end
+
+        # handle ALPHA (i.e. left/right uncertainty bias)
+        alpha_augmented_semantics = filter(x -> occursin("update_alpha", x), possible_semantics)
+        possible_semantics = filter(x -> !occursin("update_alpha", x), possible_semantics)
+
         semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
+        alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x)) - 3) * alpha_LR_uncertainty_bias, alpha_augmented_semantics)
+        push!(semantics_weights, alpha_augmented_semantics_weights...)
+        push!(possible_semantics, alpha_augmented_semantics...)
+
         semantics_weights = semantics_weights .* 1/sum(semantics_weights)
         if function_sig.definition == ""
             final_semantics = sample(possible_semantics, ProbabilityWeights(semantics_weights))
@@ -415,6 +426,12 @@ function generate_all_semantics(function_sig, base_semantics)
         semantics = generate_semantics(function_sig, base_semantics)
         push!(possible_semantics, semantics)
     end
+
+    # ALPHA handling
+    alpha_augmentation_base_semantics = filter(x -> occursin("< 0", x) || occursin("> 0", x), possible_semantics)
+    augmented_base_semantics = map(x -> "update_alpha(1.0) && $(x)", alpha_augmentation_base_semantics)
+    possible_semantics = [possible_semantics..., augmented_base_semantics...]    
+
     possible_semantics = unique(possible_semantics)
     # # println(possible_semantics)
 
@@ -914,7 +931,7 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    "square_room_blue_wall_far-left-corner_prize.json"
+    # "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
 all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
@@ -975,17 +992,68 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_ri
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
-# println("PRIOR ONE")
-# println(compute_prior_probability(all_function_sigs))
+# global repeats = 5
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
 
+# all_function_sigs[1].definition = "location_arg.color == color_arg"
+# prior0 = compute_prior_probability(all_function_sigs)
+# likelihood0 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[2].definition = "location_arg.position.x < 0"
+
+# prior1 = compute_prior_probability(all_function_sigs)
+# likelihood1 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+
+# prior3 = compute_prior_probability(all_function_sigs)
+# likelihood3 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[3].definition = ""
+# all_function_sigs[2].definition = "update_alpha(1.0) && location_arg.position.x < 0"
+
+# prior2 = compute_prior_probability(all_function_sigs)
+# likelihood2 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+# prior4 = compute_prior_probability(all_function_sigs)
+# likelihood4 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# println("PRIOR ZERO")
+# println(prior0)
+# println("LIKELIHOOD ZERO")
+# println(likelihood0)
+# println("POSTERIOR ZERO")
+# println(prior0 * likelihood0)
+
+# println("PRIOR ONE")
+# println(prior1)
 # println("LIKELIHOOD ONE")
-# println(compute_likelihood(all_function_sigs, test_config_names, 1))
+# println(likelihood1)
+# println("POSTERIOR ONE")
+# println(prior1 * likelihood1)
 
 # println("PRIOR TWO")
-# all_function_sigs[1].definition = "location_arg.color == color_arg"
-# println(compute_prior_probability(all_function_sigs))
+# println(prior2)
 # println("LIKELIHOOD TWO")
-# println(compute_likelihood(all_function_sigs, test_config_names, 1))
+# println(likelihood2)
+# println("POSTERIOR TWO")
+# println(prior2 * likelihood2)
+
+# println("PRIOR THREE")
+# println(prior3)
+# println("LIKELIHOOD THREE")
+# println(likelihood3)
+# println("POSTERIOR THREE")
+# println(prior3 * likelihood3)
+
+# println("PRIOR FOUR")
+# println(prior4)
+# println("LIKELIHOOD FOUR")
+# println(likelihood4)
+# println("POSTERIOR FOUR")
+# println(prior4 * likelihood4)
+
 # all_function_sigs = eval(Meta.parse("Function[Function(\"at\", [\"location_arg\", \"color_arg\"], DataType[Wall, COLOR], \"location_arg.color == color_arg\"), Function(\"my_left\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x < 0\"), Function(\"left_of\", [\"location_arg\", \"color_arg\"], DataType[Corner, COLOR], \"location_arg.wall2.color == color_arg\"), Function(\"my_right\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x > 0\"), Function(\"right_of\", [\"location1_arg\", \"location2_arg\"], DataType[Spot, Spot], \"\")]"))
 
 # at_function.definition = "location_arg.color == color_arg"
