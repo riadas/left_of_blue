@@ -917,7 +917,7 @@ test_config_names = [
     "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function] # left_of_opposite_function
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
