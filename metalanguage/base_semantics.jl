@@ -77,6 +77,12 @@ function next(location::Location, locations)
     locations[next_index]
 end
 
+global ALPHA = 0.5
+function update_alpha(x)
+    global ALPHA = x
+    return true
+end
+
 # lower-level coord interface, not to be learned from data
 function coord(location::Spot)
     location.position.x

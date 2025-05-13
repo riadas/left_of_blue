@@ -89,6 +89,9 @@ max_elt = old_max_elt > max_elt ? old_max_elt : max_elt
 
 reverse!(sort!(all_results, by=x -> x[2]))
 
+println(max_elt)
+println(all_results[1:10])
+
 open("metalanguage/posteriors/posterior_$(length(all_function_sigs))_functions_$(repeats)_repeats.txt", "w+") do f 
     write(f, string(all_results))
 end

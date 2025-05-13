@@ -993,12 +993,13 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                     end
                     search_locations[config_name] = r
                 else
-                    if occursin("spatial", config_name) && !using_temp_semantics && (occursin("left", best_program) || occursin("right", best_program)) 
-                        scores[config_name] = 1/length(locations_to_search) * alpha
+                    all_definitions = join(map(x -> x.definition, all_functions), " ")
+                    if occursin("spatial", config_name) && !using_temp_semantics && (occursin("left", best_program) || occursin("right", best_program)) && (occursin("< 0", all_definitions) || occursin("> 0", all_definitions))
+                        scores[config_name] = 1/length(locations_to_search) * ALPHA
                     else
                         scores[config_name] = 1/length(locations_to_search)
                     end
-                    search_locations[config_name] = locations_to_search    
+                    search_locations[config_name] = locations_to_search
                 end
 
             end
