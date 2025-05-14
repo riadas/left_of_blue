@@ -2,7 +2,7 @@ include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
 global repeats = 11
-global test_name = "mcmc_$(repeats)_new_sem_space_y"
+global test_name = "mcmc_$(repeats)_new_sem_space_z"
 global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
 global base_semantics_str = ""
@@ -333,13 +333,23 @@ function sample_semantics(function_sig, base_semantics, mode="prior", context=""
         end
 
         # handle ALPHA (i.e. left/right uncertainty bias)
+        @show possible_semantics
         alpha_augmented_semantics = filter(x -> occursin("update_alpha", x), possible_semantics)
         possible_semantics = filter(x -> !occursin("update_alpha", x), possible_semantics)
 
         semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
-        alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x)) - 3) * alpha_LR_uncertainty_bias, alpha_augmented_semantics)
+        if mode == "prior"
+            alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x)) - 3) * alpha_LR_uncertainty_bias, alpha_augmented_semantics)
+        else
+            alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x))), alpha_augmented_semantics)
+        end
         push!(semantics_weights, alpha_augmented_semantics_weights...)
         push!(possible_semantics, alpha_augmented_semantics...)
+
+        @show alpha_augmented_semantics
+        @show possible_semantics
+        @show alpha_augmented_semantics_weights 
+        @show semantics_weights
 
         semantics_weights = semantics_weights .* 1/sum(semantics_weights)
         if function_sig.definition == ""
@@ -472,7 +482,7 @@ function compute_likelihood(all_functions, test_config_names, repeats=1)
     new_semantics_str = join([base_semantics_str, function_definition_strs...], "\n")
 
     # then run evaluate_semantics with the set of test_config_names (subset of all config_names)
-    total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, new_semantics_str, updated_syntax, 0, all_function_sigs, test_config_names, test_name)
+    total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, new_semantics_str, updated_syntax, 0, all_functions, test_config_names, test_name)
 
     # return product of probabilities in the `scores` dict
     probs = map(k -> scores[k], [keys(scores)...])
@@ -934,7 +944,7 @@ test_config_names = [
     # "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function] # left_of_opposite_function
+all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -990,7 +1000,7 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 #     end
 # end
 
-# chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
+chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # global repeats = 5
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
