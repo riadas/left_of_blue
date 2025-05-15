@@ -11,7 +11,7 @@ global base_syntax = Dict(
     Wall =>   "location.depth == genDEPTH", # | lib_at Wall COLOR
     Corner => "location.wall1.depth genComparison location.wall2.depth",
     SpecialCorner => "location.wall1.depth genComparison location.wall2.depth",
-    Spot =>   "location.position.y == 0 && location.position.x == 0", # "true",
+    Spot =>   "location.position.z == 0", # location.position.y == 0 && 
     Whole =>  "location.coral.x != 0", # geometry match
 )
 
@@ -58,6 +58,12 @@ function generate_semantics(function_signature::Function, current_semantics_cfg:
             s = generate_semantics(partial_function_signature, current_semantics_cfg)
             push!(partial_semantics, s)
         end
+
+        # PATCH
+        sort!(partial_semantics, by=length) 
+        reverse!(partial_semantics)
+        partial_semantics[1] = replace(partial_semantics[1], function_signature.arg_names[3] => function_signature.arg_names[2])
+        partial_semantics[2] = replace(partial_semantics[2], function_signature.arg_names[2] => function_signature.arg_names[3])
 
         return "$(partial_semantics[1]) && $(partial_semantics[2])"
     end
@@ -248,7 +254,14 @@ function genWall_semantics(arg_names::Vector{String}, arg_types::Vector{DataType
                         "next($(arg_name), locations).wall2"])
     elseif type == Corner || type == SpecialCorner
         choice = rand(["$(arg_name).wall1",
-                        "$(arg_name).wall2"])
+                        "$(arg_name).wall2",
+                        "next($(arg_name), locations)",
+                        "prev($(arg_name), locations)",
+                        "next(next($(arg_name), locations), locations).wall1",
+                        "next(next($(arg_name), locations), locations).wall2",
+                        "prev(prev($(arg_name), locations), locations).wall1",
+                        "prev(prev($(arg_name), locations), locations).wall2"
+                        ])
     end
     choice
 end
@@ -324,7 +337,7 @@ function genComparison_semantics(arg_names::Vector{String}, arg_types::Vector{Da
     end
 end
 
-function format_new_function_string(function_sig)
+function format_new_function_string(function_sig, replace_empty_with_true=false)
     typed_args = []
     for i in 1:length(function_sig.arg_names)
         arg_name = function_sig.arg_names[i]
@@ -332,10 +345,17 @@ function format_new_function_string(function_sig)
         typed_arg = "$(arg_name)::$(arg_type)"
         push!(typed_args, typed_arg)
     end
-    """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
-        $(function_sig.definition)
+    if function_sig.definition == "" && replace_empty_with_true
+        """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
+            true
+        end
+        """
+    else
+        """function $(function_sig.name)($(join(typed_args, ", ")))::Bool
+            $(function_sig.definition)
+        end
+        """
     end
-    """
 end
 
 function Base.size(x::Expr)

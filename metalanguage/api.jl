@@ -132,8 +132,8 @@ function translate_from_NL(scene, functions, max_language_augmented_AST_size)
     types = map(x -> typeof(x), scene.locations)
 
     if Corner in types 
-        program_segment = "&& location.wall2 == blue"
-        if size(Meta.parse(program_segment)) <= max_language_augmented_AST_size 
+        program_segment = "&& (location.wall2.color == blue || location.wall1.color == blue)"
+        if 12 <= max_language_augmented_AST_size 
             return (nothing, program_segment)
         else
             return (nothing, "")
