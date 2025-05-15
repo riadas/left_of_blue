@@ -1,7 +1,7 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 1
+# global repeats = 1
 global test_name = "mcmc_$(repeats)"
 global alpha_num_funcs = 1.0 # 0.5
 global alpha_semantics_size = 0.75
