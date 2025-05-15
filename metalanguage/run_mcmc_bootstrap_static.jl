@@ -513,7 +513,7 @@ function compute_likelihood(all_functions, test_config_names, repeats=1)
     new_semantics_str = join([base_semantics_str, function_definition_strs...], "\n")
 
     # then run evaluate_semantics with the set of test_config_names (subset of all config_names)
-    total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, new_semantics_str, updated_syntax, 0, all_function_sigs, test_config_names, test_name, true)
+    total_score, scores, search_locations, temp_semantics = evaluate_semantics(nothing, "", 0, new_semantics_str, updated_syntax, 0, all_functions, test_config_names, test_name, true)
 
     # return product of probabilities in the `scores` dict
     probs = map(k -> scores[k], [keys(scores)...])

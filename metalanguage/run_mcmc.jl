@@ -2,7 +2,7 @@ include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
 global repeats = 11
-global test_name = "mcmc_$(repeats)_new_sem_space_y"
+global test_name = "mcmc_$(repeats)_new_sem_space_z"
 global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.5
 global base_semantics_str = ""
@@ -333,13 +333,23 @@ function sample_semantics(function_sig, base_semantics, mode="prior", context=""
         end
 
         # handle ALPHA (i.e. left/right uncertainty bias)
+        @show possible_semantics
         alpha_augmented_semantics = filter(x -> occursin("update_alpha", x), possible_semantics)
         possible_semantics = filter(x -> !occursin("update_alpha", x), possible_semantics)
 
         semantics_weights = map(x -> alpha^size(Meta.parse(possible_semantics[x])), 1:length(possible_semantics)) # alpha^x
-        alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x)) - 3) * alpha_LR_uncertainty_bias, alpha_augmented_semantics)
+        if mode == "prior"
+            alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x)) - 3) * alpha_LR_uncertainty_bias, alpha_augmented_semantics)
+        else
+            alpha_augmented_semantics_weights = map(x -> alpha^(size(Meta.parse(x))), alpha_augmented_semantics)
+        end
         push!(semantics_weights, alpha_augmented_semantics_weights...)
         push!(possible_semantics, alpha_augmented_semantics...)
+
+        @show alpha_augmented_semantics
+        @show possible_semantics
+        @show alpha_augmented_semantics_weights 
+        @show semantics_weights
 
         semantics_weights = semantics_weights .* 1/sum(semantics_weights)
         if function_sig.definition == ""
