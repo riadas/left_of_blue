@@ -5,7 +5,7 @@ using Plots
 
 age_groups = [1, 2, 3, 4]
 # correlation_dict = Dict()
-
+test_name = "test1"
 test_config_names = [
     "square_room_blue_wall_center_prize.json",
     "square_room_blue_wall_center_prize_copy1.json",
@@ -317,7 +317,7 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
     end
 
     if save_suffix != ""
-        savefig("$(mode)_$(save_suffix).png")
+        savefig("$(mode)_$(save_suffix)_temp2.png")
     end
 
     return p
