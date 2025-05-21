@@ -941,10 +941,10 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    # "square_room_blue_wall_far-left-corner_prize.json"
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function,  my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -1000,7 +1000,7 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function] # lef
 #     end
 # end
 
-chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
+# chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # global repeats = 5
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
@@ -1086,4 +1086,3 @@ chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # println("----- ACCEPTANCE PROBABILITY REVERSE")
 # println(compute_acceptance_probability(proposed_state, current_state, test_config_names))
->>>>>>> 70be8fd645956a716ca3c7a977ba388638d9dbc8
