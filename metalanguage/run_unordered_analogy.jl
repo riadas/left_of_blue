@@ -800,10 +800,10 @@ function evaluate_semantics(function_sig, definition, category_assignment, level
                 push!(programs, program)
             end
             programs = unique(programs)
-            programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)) && !occursin("white, white)", x), programs) # PATCH
-            if occursin("far-left-corner", config_name) || occursin("far-right-corner", config_name)
-                programs = filter(x -> !((occursin("left", x) || occursin("right", x)) && !occursin("white", x)), programs)
-            end
+            # programs = filter(x -> !(occursin("white", x) && occursin("blue)", x)) && !occursin("white, white)", x), programs) # PATCH
+            # if occursin("far-left-corner", config_name) || occursin("far-right-corner", config_name)
+            #     programs = filter(x -> !((occursin("left", x) || occursin("right", x)) && !occursin("white", x)), programs)
+            # end
             # @show programs 
             using_temp_semantics = false
             temp_program = ""
