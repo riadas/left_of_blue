@@ -956,18 +956,11 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-<<<<<<< HEAD
     "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
 all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function,  my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
-=======
-    # "square_room_blue_wall_left_prize_copy.json",
-    "square_room_blue_wall_far-left-corner_prize.json"
-]
-
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
->>>>>>> 7e1be1a13412fc7b66603a2a79453ce6f06c028e
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -1026,7 +1019,7 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 # chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
 # global repeats = 25
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 
 # all_function_sigs[1].definition = "location_arg.color == color_arg"
 # prior0 = compute_prior_probability(all_function_sigs)

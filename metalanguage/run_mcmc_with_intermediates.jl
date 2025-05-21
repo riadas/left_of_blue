@@ -11,7 +11,7 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    #"square_room_blue_wall_far-left-corner_prize.json"
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
 global repeats = parse(Int, ARGS[1])
