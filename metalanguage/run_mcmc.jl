@@ -3,11 +3,12 @@ using StatsBase
 using Combinatorics
 global repeats = 11
 global test_name = "mcmc_$(repeats)_new_sem_space_z"
-global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
-global alpha_semantics_size = 0.5
+global alpha_num_funcs = 0.0000040 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+global alpha_semantics_size = 0.1
 global base_semantics_str = ""
 global alpha_AST_weight = 10 # 10
 global alpha_arg_weight = 3
+global alpha_name_length = 2
 global alpha_empty_prob = 0.9999 # 0.0001
 global alpha_empty_symmetry = 0.4
 global alpha_symmetry_over_non_symmetry = 0.95
@@ -17,6 +18,14 @@ global first_decision_weights = Dict([
     "add" => 3, 
     "delete" => 3,
 ])
+
+# no "y" setting with four func's
+# global alpha_num_funcs = 0.00000100 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+# global alpha_semantics_size = 0.4
+
+# "y" setting with four func's -- left_of/left_of_opposite come online at the same time
+# global alpha_num_funcs = 0.00000200 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+# global alpha_semantics_size = 0.1
 
 open("metalanguage/base_semantics.jl", "r") do f 
     global base_semantics_str = read(f, String)
@@ -28,7 +37,8 @@ function generative_prior(all_functions_with_sym)
     # group all functions including symmetries by type signature
     type_signature_groups = Dict()
     for f in all_functions_with_sym
-        type_signature = repr(f.arg_types)
+        type_signature = repr([f.arg_names..., f.arg_types...])
+
         if !(type_signature in keys(type_signature_groups))
             type_signature_groups[type_signature] = [f]
         else
@@ -90,7 +100,7 @@ function generative_prior(all_functions_with_sym)
     acc_count = 0
     for f in all_functions_with_sym 
         if !(f in all_functions)
-            type_signature = repr(f.arg_types)
+            type_signature = repr([f.arg_names..., f.arg_types...])
             sym_fs = filter(x -> x != f, type_signature_groups[type_signature])
             if sym_fs != [] && sym_fs[1].definition != ""
                 acc_count += 1
@@ -124,12 +134,13 @@ function generative_prior(all_functions_with_sym)
 end
 
 function compute_prior_probability(all_functions_with_sym)
+    @show all_functions_with_sym
     probs = []
 
     # group all functions including symmetries by type signature
     type_signature_groups = Dict()
     for f in all_functions_with_sym
-        type_signature = repr(f.arg_types)
+        type_signature = repr([f.arg_names..., f.arg_types...])
         if !(type_signature in keys(type_signature_groups))
             type_signature_groups[type_signature] = [f]
         else
@@ -296,9 +307,10 @@ function compute_function_subset_weight_scores(all_functions, mode="prior")
         min_possible_AST_size = min_possible_AST_size_dict[format_new_function_string(func)]
         # @show min_possible_AST_size 
         num_args = length(func.arg_names)
+        name_length = length(split(func.name, "_"))
         # @show num_args
         if mode == "prior"
-            weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight
+            weight_score = min_possible_AST_size*alpha_AST_weight + num_args * alpha_arg_weight + name_length * alpha_name_length
         else
             weight_score = 1
         end
@@ -914,8 +926,11 @@ right_of_function_wall = Function("right_of", ["location_arg", "color_arg"], [Wa
 left_of_function_with_depth = Function("left_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
 right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg", "depth_arg"], [Corner, COLOR, DEPTH], "")
 
-left_of_opposite_function = Function("left_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
-right_of_opposite_function = Function("right_of", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
+# left_of_opposite_function = Function("left_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
+# right_of_opposite_function = Function("right_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
+
+left_of_opposite_function = Function("left_of_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
+right_of_opposite_function = Function("right_of_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
 
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
@@ -941,10 +956,11 @@ test_config_names = [
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    # "square_room_blue_wall_far-left-corner_prize.json"
+    # "square_room_blue_wall_left_prize_copy.json",
+    "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -1002,32 +1018,50 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_ri
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
 
-# global repeats = 5
-# all_function_sigs = [at_function, my_left_function_spot, left_of_function] # left_of_opposite_function
+# global repeats = 25
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 
 # all_function_sigs[1].definition = "location_arg.color == color_arg"
 # prior0 = compute_prior_probability(all_function_sigs)
 # likelihood0 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
 # all_function_sigs[2].definition = "location_arg.position.x < 0"
+# all_function_sigs[5].definition = "location_arg.position.x > 0"
 
 # prior1 = compute_prior_probability(all_function_sigs)
 # likelihood1 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
 # all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
 
 # prior3 = compute_prior_probability(all_function_sigs)
 # likelihood3 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
 # all_function_sigs[3].definition = ""
+# all_function_sigs[6].definition = ""
 # all_function_sigs[2].definition = "update_alpha(1.0) && location_arg.position.x < 0"
+# all_function_sigs[5].definition = "update_alpha(1.0) && location_arg.position.x > 0"
 
 # prior2 = compute_prior_probability(all_function_sigs)
 # likelihood2 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
 # all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
 # prior4 = compute_prior_probability(all_function_sigs)
 # likelihood4 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[3].definition = "prev(prev(location_arg, locations), locations).wall1.color == color_arg"
+# all_function_sigs[6].definition = "next(next(location_arg, locations), locations).wall2.color == color_arg"
+
+# prior5 = compute_prior_probability(all_function_sigs)
+# likelihood5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+
+# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
+# all_function_sigs[4].definition = "prev(prev(location_arg, locations), locations).wall1.color == color1_arg"
+# all_function_sigs[7].definition = "next(next(location_arg, locations), locations).wall2.color == color1_arg"
+# prior6 = compute_prior_probability(all_function_sigs)
+# likelihood6 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
 # println("PRIOR ZERO")
 # println(prior0)
@@ -1063,6 +1097,20 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_ri
 # println(likelihood4)
 # println("POSTERIOR FOUR")
 # println(prior4 * likelihood4)
+
+# println("PRIOR FIVE")
+# println(prior5)
+# println("LIKELIHOOD FIVE")
+# println(likelihood5)
+# println("POSTERIOR FIVE")
+# println(prior5 * likelihood5)
+
+# println("PRIOR SIX")
+# println(prior6)
+# println("LIKELIHOOD SIX")
+# println(likelihood6)
+# println("POSTERIOR SIX")
+# println(prior6 * likelihood6)
 
 # all_function_sigs = eval(Meta.parse("Function[Function(\"at\", [\"location_arg\", \"color_arg\"], DataType[Wall, COLOR], \"location_arg.color == color_arg\"), Function(\"my_left\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x < 0\"), Function(\"left_of\", [\"location_arg\", \"color_arg\"], DataType[Corner, COLOR], \"location_arg.wall2.color == color_arg\"), Function(\"my_right\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x > 0\"), Function(\"right_of\", [\"location1_arg\", \"location2_arg\"], DataType[Spot, Spot], \"\")]"))
 

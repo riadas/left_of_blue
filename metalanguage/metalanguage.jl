@@ -320,7 +320,7 @@ end
 function genInt_semantics(arg_name::String, arg_type::DataType)
     choices = ["0", "-1", "1"]
     if arg_type == Spot
-        for coord in ["x"] # "y", "z"
+        for coord in ["x", "y"] # "y", "z"
             push!(choices, "$(arg_name).position.$(coord)")
         end
     elseif arg_type == Half
@@ -360,6 +360,9 @@ end
 
 function Base.size(x::Expr)
     l = 0 
+    if x.head != :call 
+        l += 1
+    end
     for arg in x.args 
         if arg isa Expr 
             l += size(arg)
