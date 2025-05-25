@@ -11,7 +11,7 @@ global alpha_arg_weight = 3
 global alpha_name_length = 2
 global alpha_empty_prob = 0.9999 # 0.0001
 global alpha_empty_symmetry = 0.4
-global alpha_symmetry_over_non_symmetry = 0.95
+global alpha_symmetry_over_non_symmetry = 0.999999 # 0.95
 global alpha_LR_uncertainty_bias = (0.5)^(4 * 7.5)
 global first_decision_weights = Dict([
     "edit" => 3,
@@ -461,6 +461,14 @@ function generate_all_semantics(function_sig, base_semantics)
     possible_semantics = filter(x -> foldl(&, map(a -> occursin(a, x), function_sig.arg_names), init=true), possible_semantics)
 
     possible_semantics = filter(x -> !occursin("0 <", x) && !occursin("1 <", x) && !occursin("1 >", x) && !occursin("0 >", x), possible_semantics)
+
+    possible_semantics = filter(x -> !(x in [
+        "next(location_arg, locations).color == color_arg", 
+        "next(location_arg, locations).color == color1_arg",
+        "prev(location_arg, locations).color == color_arg",
+        "prev(location_arg, locations).color == color1_arg"
+        ]), possible_semantics)
+
 
     possible_semantics = sort(possible_semantics, by=x -> size(Meta.parse(x)))
     size_dict = Dict()
