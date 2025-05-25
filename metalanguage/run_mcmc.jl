@@ -1,18 +1,19 @@
 include("run_unordered_analogy.jl")
 using StatsBase 
 using Combinatorics
-global repeats = 11
+global repeats = 5
 global test_name = "mcmc_$(repeats)_new_sem_space_z"
-global alpha_num_funcs = 0.0000040 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+global alpha_num_funcs = 0.0000025 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
 global alpha_semantics_size = 0.1
 global base_semantics_str = ""
-global alpha_AST_weight = 10 # 10
-global alpha_arg_weight = 3
-global alpha_name_length = 2
-global alpha_empty_prob = 0.9999 # 0.0001
+global alpha_AST_weight = 8 # 10
+global alpha_arg_weight = 6 # 3
+global alpha_name_length = 5
+global alpha_empty_prob = 0.99999995 # 0.99995 # 0.0001
 global alpha_empty_symmetry = 0.4
 global alpha_symmetry_over_non_symmetry = 0.999999 # 0.95
-global alpha_LR_uncertainty_bias = (0.5)^(4 * 7.5)
+global alpha_LR_uncertainty_bias = (0.5)^(5 * 7.5)
+global alpha_double_delete = 0.5
 global first_decision_weights = Dict([
     "edit" => 3,
     "add" => 3, 
@@ -151,7 +152,7 @@ function compute_prior_probability(all_functions_with_sym)
     all_functions = []
     first_pairs = []
     second_pairs = []
-    for k in keys(type_signature_groups)
+    for k in sort([keys(type_signature_groups)...], by=x -> findall(y -> repr([y.arg_names..., y.arg_types...]) == x,  all_function_sigs)[1])
         fs = reverse(sort(type_signature_groups[k], by=x -> length(x.definition)))
         if length(fs) > 1
             push!(first_pairs, fs[1])
@@ -321,10 +322,14 @@ function compute_function_subset_weight_scores(all_functions, mode="prior")
 
     end
     weights = map(x -> weight_scores[format_new_function_string(x)], all_functions)
+    @show all_functions
+    println("pre-final weights")
+    @show weights
     weights = weights .- minimum(weights) .+ 1
+    @show weights
     weights = map(x -> 1/x, weights)
-    # println("final weights")
-    # @show weights
+    println("final weights")
+    @show weights
     return weights .* 1/sum(weights)
 end
 
@@ -469,7 +474,10 @@ function generate_all_semantics(function_sig, base_semantics)
         "prev(location_arg, locations).color == color1_arg"
         ]), possible_semantics)
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
     possible_semantics = sort(possible_semantics, by=x -> size(Meta.parse(x)))
     size_dict = Dict()
     for s in possible_semantics 
@@ -543,6 +551,16 @@ function proposal(current_state)
             println(subset[1])
             subset[1].definition = ""
             push!(probs, prob)
+            signature = [subset[1].arg_names..., subset[1].arg_types]
+            symmetric_functions = filter(x -> [x.arg_names..., x.arg_types] == signature && x.name != subset[1].name, old_functions)
+            if symmetric_functions != []
+                if rand() < alpha_double_delete 
+                    symmetric_functions[1].definition = ""
+                    push!(probs, alpha_double_delete)
+                else
+                    push!(probs, (1 - alpha_double_delete))
+                end
+            end
         end
 
     elseif length(synthesized_old_functions) == 0
@@ -581,6 +599,16 @@ function proposal(current_state)
             println(subset[1])
             subset[1].definition = ""
             push!(probs, prob)
+            signature = [subset[1].arg_names..., subset[1].arg_types]
+            symmetric_functions = filter(x -> [x.arg_names..., x.arg_types] == signature && x.name != subset[1].name && x.definition != "", old_functions)
+            if symmetric_functions != []
+                if rand() < alpha_double_delete 
+                    symmetric_functions[1].definition = ""
+                    push!(probs, alpha_double_delete)
+                else
+                    push!(probs, (1 - alpha_double_delete))
+                end
+            end
         elseif first_choice == "add"
             subset, prob = sample_function_subset(filter(x -> x.definition == "", old_functions), 1, "proposal")
             println("ADD")
@@ -675,26 +703,42 @@ function compute_transition_probability(current_state, proposed_state)
             # delete
             push!(probs, weights[2])
 
-            deleted_func_idx = nothing 
+            deleted_func_idxs = [] 
             for i in 1:length(old_functions)
                 old_f = old_functions[i]
                 new_f = new_functions[i]
                 if old_f.name == new_f.name && old_f.definition != "" && new_f.definition == "" 
-                    deleted_func_idx = i
-                    break
+                    push!(deleted_func_idxs, i)
                 end
             end
 
-            all_functions = deepcopy(current_state)
-            for i in 1:length(all_functions)
-                f = all_functions[i]
-                if i != deleted_func_idx
-                    f.definition = ""
+            deletion_probs = []
+            for deleted_func_idx in deleted_func_idxs
+                all_functions = deepcopy(current_state)
+                for i in 1:length(all_functions)
+                    f = all_functions[i]
+                    if i != deleted_func_idx
+                        f.definition = ""
+                    end
+                end
+    
+                prob = compute_function_subset_prob(all_functions, "proposal")
+
+                signature = [all_functions[deleted_func_idx].arg_names..., all_functions[deleted_func_idx].arg_types]
+                symmetric_functions = filter(x -> [x.arg_names..., x.arg_types] == signature && x.name != all_functions[deleted_func_idx].name, current_state)    
+
+                if symmetric_functions != []
+                    if length(deleted_func_idxs) > 1
+                        push!(deletion_probs, prob * alpha_double_delete)
+                    else 
+                        push!(deletion_probs, prob * (1 - alpha_double_delete))
+                    end
+                else
+                    push!(deletion_probs, prob)                    
                 end
             end
-
-            prob = compute_function_subset_prob(all_functions, "proposal")
-            push!(probs, prob)
+            delete_prob = sum(deletion_probs)
+            push!(probs, delete_prob)
         end
 
     elseif length(synthesized_old_functions) == 0
@@ -808,30 +852,46 @@ function compute_transition_probability(current_state, proposed_state)
         else
             # delete
             push!(probs, weights[2])
-            deleted_func_idx = nothing 
+            deleted_func_idxs = [] 
             for i in 1:length(old_functions)
                 old_f = old_functions[i]
                 new_f = new_functions[i]
                 if old_f.name == new_f.name && old_f.definition != "" && new_f.definition == "" 
-                    deleted_func_idx = i
-                    break
+                    push!(deleted_func_idxs, i)
                 end
             end
 
-            all_functions = []
-            current_state_copy = deepcopy(current_state)
-            for i in 1:length(current_state_copy)
-                f = current_state_copy[i]
-                if f.definition != ""
-                    if i != deleted_func_idx
-                        f.definition = ""
-                    end
-                    push!(all_functions, f)
-                end                
-            end
+            deletion_probs = []
+            for deleted_func_idx in deleted_func_idxs
+                all_functions = []
+                current_state_copy = deepcopy(current_state)
+                for i in 1:length(current_state_copy)
+                    f = current_state_copy[i]
+                    if f.definition != ""
+                        if i != deleted_func_idx
+                            f.definition = ""
+                        end
+                        push!(all_functions, f)
+                    end                
+                end 
 
-            prob = compute_function_subset_prob(all_functions, "proposal")
-            push!(probs, prob)
+                prob = compute_function_subset_prob(all_functions, "proposal")
+
+                signature = [current_state_copy[deleted_func_idx].arg_names..., current_state_copy[deleted_func_idx].arg_types]
+                symmetric_functions = filter(x -> [x.arg_names..., x.arg_types] == signature && x.name != current_state_copy[deleted_func_idx].name && x.definition != "", current_state)    
+
+                if symmetric_functions != []
+                    if length(deleted_func_idxs) > 1
+                        push!(deletion_probs, prob * alpha_double_delete)
+                    else 
+                        push!(deletion_probs, prob * (1 - alpha_double_delete))
+                    end
+                else
+                    push!(deletion_probs, prob)
+                end
+            end
+            delete_prob = sum(deletion_probs)
+            push!(probs, delete_prob)
         end
     end
 
@@ -937,8 +997,8 @@ right_of_function_with_depth = Function("right_of", ["location_arg", "color_arg"
 # left_of_opposite_function = Function("left_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 # right_of_opposite_function = Function("right_of_opposite", ["location_arg", "color1_arg", "color2_arg"], [Corner, COLOR, COLOR], "")
 
-left_of_opposite_function = Function("left_of_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
-right_of_opposite_function = Function("right_of_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
+left_of_opposite_function = Function("left_of_wall_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
+right_of_opposite_function = Function("right_of_wall_opposite", ["location_arg", "color1_arg"], [Corner, COLOR], "")
 
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 
@@ -959,16 +1019,22 @@ test_config_names = [
     "square_room_blue_wall_center_prize_copy2.json",  
     "square_room_blue_wall_center_prize_copy3.json", 
     "square_room_blue_wall_center_prize_copy4.json",   
+    "square_room_blue_wall_center_prize_copy5.json",
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
+    "spatial_lang_test_copy4_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
     "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
+<<<<<<< HEAD
 all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function,  my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
+=======
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
+>>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -1024,67 +1090,67 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 #     end
 # end
 
-# chain = run_mcmc(all_function_sigs, test_config_names, 500, repeats)
+# chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
+<<<<<<< HEAD
 # global repeats = 25
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
+=======
+# global repeats = 20
+# results = []
+# for repeats in 5:5
+#     println("----- REPEATS = $(repeats) -----")
+#     all_function_sigs = deepcopy([at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function]) # left_of_opposite_function
+>>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
 
-# all_function_sigs[1].definition = "location_arg.color == color_arg"
-# prior0 = compute_prior_probability(all_function_sigs)
-# likelihood0 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     prior_ = compute_prior_probability(all_function_sigs)
+#     likelihood_ = compute_likelihood(all_function_sigs, test_config_names, repeats)
+    
 
-# all_function_sigs[2].definition = "location_arg.position.x < 0"
-# all_function_sigs[5].definition = "location_arg.position.x > 0"
+#     all_function_sigs[1].definition = "location_arg.color == color_arg"
+#     prior0 = compute_prior_probability(all_function_sigs)
+#     likelihood0 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# prior1 = compute_prior_probability(all_function_sigs)
-# likelihood1 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     all_function_sigs[2].definition = "location_arg.position.x < 0"
+#     all_function_sigs[5].definition = "location_arg.position.x > 0"
 
-# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
-# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
+#     prior1 = compute_prior_probability(all_function_sigs)
+#     likelihood1 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# prior3 = compute_prior_probability(all_function_sigs)
-# likelihood3 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+#     all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
 
-# all_function_sigs[3].definition = ""
-# all_function_sigs[6].definition = ""
-# all_function_sigs[2].definition = "update_alpha(1.0) && location_arg.position.x < 0"
-# all_function_sigs[5].definition = "update_alpha(1.0) && location_arg.position.x > 0"
+#     prior3 = compute_prior_probability(all_function_sigs)
+#     likelihood3 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# prior2 = compute_prior_probability(all_function_sigs)
-# likelihood2 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     all_function_sigs[3].definition = ""
+#     all_function_sigs[6].definition = ""
+#     all_function_sigs[2].definition = "update_alpha(1.0) && location_arg.position.x < 0"
+#     all_function_sigs[5].definition = "update_alpha(1.0) && location_arg.position.x > 0"
 
-# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
-# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
-# prior4 = compute_prior_probability(all_function_sigs)
-# likelihood4 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     prior2 = compute_prior_probability(all_function_sigs)
+#     likelihood2 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# all_function_sigs[3].definition = "prev(prev(location_arg, locations), locations).wall1.color == color_arg"
-# all_function_sigs[6].definition = "next(next(location_arg, locations), locations).wall2.color == color_arg"
+#     all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+#     all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
+#     prior4 = compute_prior_probability(all_function_sigs)
+#     likelihood4 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# prior5 = compute_prior_probability(all_function_sigs)
-# likelihood5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     all_function_sigs[3].definition = "prev(prev(location_arg, locations), locations).wall1.color == color_arg"
+#     all_function_sigs[6].definition = "next(next(location_arg, locations), locations).wall2.color == color_arg"
 
-# all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
-# all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
-# all_function_sigs[4].definition = "prev(prev(location_arg, locations), locations).wall1.color == color1_arg"
-# all_function_sigs[7].definition = "next(next(location_arg, locations), locations).wall2.color == color1_arg"
-# prior6 = compute_prior_probability(all_function_sigs)
-# likelihood6 = compute_likelihood(all_function_sigs, test_config_names, repeats)
+#     prior5 = compute_prior_probability(all_function_sigs)
+#     likelihood5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# println("PRIOR ZERO")
-# println(prior0)
-# println("LIKELIHOOD ZERO")
-# println(likelihood0)
-# println("POSTERIOR ZERO")
-# println(prior0 * likelihood0)
+#     all_function_sigs[3].definition = ""
+#     all_function_sigs[6].definition = ""
+#     all_function_sigs[4].definition = "prev(prev(location_arg, locations), locations).wall1.color == color1_arg"
+#     all_function_sigs[7].definition = "location_arg.wall2.color == color1_arg"
 
-# println("PRIOR ONE")
-# println(prior1)
-# println("LIKELIHOOD ONE")
-# println(likelihood1)
-# println("POSTERIOR ONE")
-# println(prior1 * likelihood1)
+#     prior5_5 = compute_prior_probability(all_function_sigs)
+#     likelihood5_5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
+<<<<<<< HEAD
 # println("PRIOR TWO")
 # println(prior2)
 # println("LIKELIHOOD TWO")
@@ -1092,34 +1158,105 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 # println(likelihood2)
 # println("POSTERIOR TWO")
 # println(prior2 * likelihood2)
+=======
+#     all_function_sigs[4].definition = "location_arg.wall2.color == color1_arg"
+#     all_function_sigs[7].definition = "location_arg.wall1.color == color1_arg"
+>>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
 
-# println("PRIOR THREE")
-# println(prior3)
-# println("LIKELIHOOD THREE")
-# println(likelihood3)
-# println("POSTERIOR THREE")
-# println(prior3 * likelihood3)
+#     prior5_75 = compute_prior_probability(all_function_sigs)
+#     likelihood5_75 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# println("PRIOR FOUR")
-# println(prior4)
-# println("LIKELIHOOD FOUR")
-# println(likelihood4)
-# println("POSTERIOR FOUR")
-# println(prior4 * likelihood4)
+#     all_function_sigs[3].definition = "location_arg.wall2.color == color_arg"
+#     all_function_sigs[6].definition = "location_arg.wall1.color == color_arg"
+#     all_function_sigs[4].definition = "prev(prev(location_arg, locations), locations).wall1.color == color1_arg"
+#     all_function_sigs[7].definition = "next(next(location_arg, locations), locations).wall2.color == color1_arg"
+#     prior6 = compute_prior_probability(all_function_sigs)
+#     likelihood6 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-# println("PRIOR FIVE")
-# println(prior5)
-# println("LIKELIHOOD FIVE")
-# println(likelihood5)
-# println("POSTERIOR FIVE")
-# println(prior5 * likelihood5)
 
-# println("PRIOR SIX")
-# println(prior6)
-# println("LIKELIHOOD SIX")
-# println(likelihood6)
-# println("POSTERIOR SIX")
-# println(prior6 * likelihood6)
+#     push!(results, [repeats, prior4*likelihood4, prior5_5*likelihood5_5, prior6*likelihood6])
+
+#     println("PRIOR _")
+#     println(prior_)
+#     println("LIKELIHOOD _")
+#     println(likelihood_)
+#     println("POSTERIOR _")
+#     println(prior_ * likelihood_)
+
+#     println("PRIOR ZERO")
+#     println(prior0)
+#     println("LIKELIHOOD ZERO")
+#     println(likelihood0)
+#     println("POSTERIOR ZERO")
+#     println(prior0 * likelihood0)
+
+#     println("PRIOR ONE")
+#     println(prior1)
+#     println("LIKELIHOOD ONE")
+#     println(likelihood1)
+#     println("POSTERIOR ONE")
+#     println(prior1 * likelihood1)
+
+#     println("PRIOR TWO")
+#     println(prior2)
+#     println("LIKELIHOOD TWO")
+#     println(likelihood2)
+#     println("POSTERIOR TWO")
+#     println(prior2 * likelihood2)
+
+#     println("PRIOR THREE")
+#     println(prior3)
+#     println("LIKELIHOOD THREE")
+#     println(likelihood3)
+#     println("POSTERIOR THREE")
+#     println(prior3 * likelihood3)
+
+#     println("PRIOR FOUR")
+#     println(prior4)
+#     println("LIKELIHOOD FOUR")
+#     println(likelihood4)
+#     println("POSTERIOR FOUR")
+#     println(prior4 * likelihood4)
+
+#     println("PRIOR FIVE")
+#     println(prior5)
+#     println("LIKELIHOOD FIVE")
+#     println(likelihood5)
+#     println("POSTERIOR FIVE")
+#     println(prior5 * likelihood5)
+
+#     println("PRIOR 5.5")
+#     println(prior5_5)
+#     println("LIKELIHOOD 5.5")
+#     println(likelihood5_5)
+#     println("POSTERIOR 5.5")
+#     println(prior5_5 * likelihood5_5)
+
+#     println("PRIOR 5.75")
+#     println(prior5_75)
+#     println("LIKELIHOOD 5.75")
+#     println(likelihood5_75)
+#     println("POSTERIOR 5.75")
+#     println(prior5_75 * likelihood5_75)
+
+#     println("PRIOR SIX")
+#     println(prior6)
+#     println("LIKELIHOOD SIX")
+#     println(likelihood6)
+#     println("POSTERIOR SIX")
+#     println(prior6 * likelihood6)
+# end
+
+# for r in results 
+#     println("----- REPEATS = $(r[1]) -----")
+#     println("POSTERIOR FOUR")
+#     println(r[2])
+#     println("POSTERIOR 5.5")
+#     println(r[3])
+#     println("POSTERIOR SIX")
+#     println(r[4])
+# end
+
 
 # all_function_sigs = eval(Meta.parse("Function[Function(\"at\", [\"location_arg\", \"color_arg\"], DataType[Wall, COLOR], \"location_arg.color == color_arg\"), Function(\"my_left\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x < 0\"), Function(\"left_of\", [\"location_arg\", \"color_arg\"], DataType[Corner, COLOR], \"location_arg.wall2.color == color_arg\"), Function(\"my_right\", [\"location_arg\"], DataType[Spot], \"location_arg.position.x > 0\"), Function(\"right_of\", [\"location1_arg\", \"location2_arg\"], DataType[Spot, Spot], \"\")]"))
 

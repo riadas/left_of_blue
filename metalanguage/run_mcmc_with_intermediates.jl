@@ -6,10 +6,12 @@ test_config_names = [
     "square_room_blue_wall_center_prize_copy2.json",  
     "square_room_blue_wall_center_prize_copy3.json", 
     "square_room_blue_wall_center_prize_copy4.json",   
+    "square_room_blue_wall_center_prize_copy5.json",   
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
+    "spatial_lang_test_copy4_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
     "square_room_blue_wall_far-left-corner_prize.json"
 ]
