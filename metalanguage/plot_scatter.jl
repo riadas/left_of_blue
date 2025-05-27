@@ -232,17 +232,17 @@ vals4 = [
     (1, 0.77, "LoB"),
     (1, 0.72, "LoB"),
 
-    (0.75, 0.44, "language_understanding"), # 4 y.o. LC, no label
-    (0.75, 0.61, "language_understanding"), # 4 y.o. LC, directional
+    (0.83, 0.44, "language_understanding"), # 4 y.o. LC, no label
+    (0.83, 0.61, "language_understanding"), # 4 y.o. LC, directional
 
-    (0.75, 0.53, "language_understanding"), # 4 y.o. LP, no label
-    (0.75, 0.66, "language_understanding"), # 4 y.o. LP, directional
+    (0.83, 0.53, "language_understanding"), # 4 y.o. LP, no label
+    (0.83, 0.66, "language_understanding"), # 4 y.o. LP, directional
 
     (0.639 + 0.083, 0.559, "red-green"), # no label, 4s delay 
     (1, 0.747, "red-green"), # directional label, 4s delay
     (1, 0.625, "red-green"), # prettier label, 4s delay
 
-    (0.75, 0.812, "language_understanding"), # Shusterman-Li spontaneous relative generalization
+    (0.83, 0.812, "language_understanding"), # Shusterman-Li spontaneous relative generalization
 ]
 
 vals4_1 = [
@@ -508,7 +508,7 @@ diagonals = [1, 6, 11, 16]
 for i in 1:16
     vals = all_values[i]
     r = cor(map(x -> x[1], vals), map(x -> x[2], vals))
-    c = r < 0 ? 0 : r * r
+    c = r < 0 ? 0 : r
     s = std_err(map(x -> x[1], vals), map(x -> x[2], vals))
     p = nothing 
     for v in vals 
@@ -520,22 +520,22 @@ for i in 1:16
             mcolor = theme_palette(:auto)[4]
         end
         if isnothing(p)
-            p = scatter([v[1]], [v[2]], xlimits=(0.0, 1.05), ylimits=(0.0, 1.05), legend=false, ticks=false, background_color_subplot=RGB(c, c, c), markershape=:diamond, color=mcolor, markerstrokewidth=1)
+            p = scatter([v[1]], [v[2]], xlimits=(0.0, 1.05), ylimits=(0.0, 1.05), legend=false, ticks=false, background_color_subplot=RGB(c, c, c), markershape=:diamond, markersize=7, color=mcolor, markerstrokewidth=1)
         else
-            p = scatter(p, [v[1]], [v[2]], xlimits=(0.0, 1.05), ylimits=(0.0, 1.05), legend=false, ticks=false, background_color_subplot=RGB(c, c, c), markershape=:diamond, color=mcolor, markerstrokewidth=1)
+            p = scatter(p, [v[1]], [v[2]], xlimits=(0.0, 1.05), ylimits=(0.0, 1.05), legend=false, ticks=false, background_color_subplot=RGB(c, c, c), markershape=:diamond, markersize=7, color=mcolor, markerstrokewidth=1)
         end
     end
-    p = plot!(p, 0:0.1:1.1, 0:0.1:1.1, color=theme_palette(:auto)[2],xticks=0:0.25:1, xtickfontsize=5, yticks=0:0.25:1, ytickfontsize=5, margin=0mm, grid=false)
-    p = xlabel!(p, "Model-Predicted Accuracy", xguidefontsize=6)
-    p = ylabel!(p, "Empirical Accuracy", yguidefontsize=6)
+    p = plot!(p, 0:0.1:1.1, 0:0.1:1.1, color=theme_palette(:auto)[2],xticks=0:0.25:1, xtickfontsize=9, yticks=0:0.25:1, ytickfontsize=9, margin=3mm, grid=false)
+    p = xlabel!(p, "Model-Predicted Accuracy", xguidefontsize=10)
+    p = ylabel!(p, "Empirical Accuracy", yguidefontsize=10)
 
     stage_number = i % 4 == 0 ? 4 : i % 4
     age_range = Int(round(i / 4))
-    r_title = L"\textbf{R^2=}"
+    r_title = L"\textbf{R=}"
     if i in diagonals 
-        p = title!(p, "$(r_title)$(round(r * r, digits=4))", titlefontsize=9, titlefontcolor=:green) # , MSE=$(round(s, digits=3))
+        p = title!(p, "$(r_title)$(round(r, digits=4))", titlefontsize=14, titlefontcolor=:green) # , MSE=$(round(s, digits=3))
     else
-        p = title!(p, "$(r_title)$(round(r * r, digits=4))", titlefontsize=9) # , MSE=$(round(s, digits=3))
+        p = title!(p, "$(r_title)$(round(r, digits=4))", titlefontsize=14) # , MSE=$(round(s, digits=3))
     end
 
     push!(rs, r)
@@ -544,7 +544,7 @@ for i in 1:16
     push!(plots, p)
 end
 
-plot(plots..., layout = (4, 4), size=(650, 650))
+# plot(plots..., layout = (4, 4), size=(1000, 1000))
 
 # function plot_scatter(all_correlation_dicts)
 #     num_models = 4
@@ -584,32 +584,32 @@ plot(plots..., layout = (4, 4), size=(650, 650))
 #     return p
 # end
 
-# correlation_dict = Dict([
-#     ("geo", 1) => vals1,
-#     ("geo", 2) => vals3_1,
-#     ("geo", 3) => vals4_1,
-#     ("geo", 4) => vals5_1,
+correlation_dict = Dict([
+    ("geo", 1) => vals1,
+    ("geo", 2) => vals3_1,
+    ("geo", 3) => vals4_1,
+    ("geo", 4) => vals5_1,
 
-#     ("at", 1) => vals1_2,
-#     ("at", 2) => vals3_2,
-#     ("at", 3) => vals4_2,
-#     ("at", 4) => vals5_2,
+    ("at", 1) => vals1_2,
+    ("at", 2) => vals3_2,
+    ("at", 3) => vals4_2,
+    ("at", 4) => vals5_2,
 
-#     ("my_right", 1) => vals1_3,
-#     ("my_right", 2) => vals3,
-#     ("my_right", 3) => vals4_3,
-#     ("my_right", 4) => vals5_3,
+    ("my_right", 1) => vals1_3,
+    ("my_right", 2) => vals3,
+    ("my_right", 3) => vals4_3,
+    ("my_right", 4) => vals5_3,
 
-#     ("my_right_lang", 1) => vals1_4,
-#     ("my_right_lang", 2) => vals3_4,
-#     ("my_right_lang", 3) => vals4,
-#     ("my_right_lang", 4) => vals5_4,
+    ("my_right_lang", 1) => vals1_4,
+    ("my_right_lang", 2) => vals3_4,
+    ("my_right_lang", 3) => vals4,
+    ("my_right_lang", 4) => vals5_4,
 
-#     ("right_of", 1) => vals1_5,
-#     ("right_of", 2) => vals3_5,
-#     ("right_of", 3) => vals4_5,
-#     ("right_of", 4) => vals5,
-# ])
+    ("right_of", 1) => vals1_5,
+    ("right_of", 2) => vals3_5,
+    ("right_of", 3) => vals4_5,
+    ("right_of", 4) => vals5,
+])
 
 # plots = []
 # all_values = [vals1, vals2, vals3, vals4, vals5]

@@ -30,7 +30,9 @@ function symmetric_replace(definition, pair)
     new_definition
 end
 
-function generate_symmetric_variants(function_sigs)
+function generate_symmetric_variants(function_sigs, swap_name_pairs=[])
+    same_different_bools = generate_same_different_bools(function_sigs)
+
     symmetries = [
         ["next", "prev"],
         ["<", ">"],
@@ -61,13 +63,68 @@ function generate_symmetric_variants(function_sigs)
         for i in 1:length(synthesized_function_sigs)
             synthesized_function_sigs[i].definition = tup[i]
         end
-        push!(symmetric_variants, function_sigs_copy)
+
+        same_different_bools_copy = generate_same_different_bools(function_sigs_copy)
+
+        if same_different_bools_copy == same_different_bools 
+            push!(symmetric_variants, function_sigs_copy)
+        end
     end
+
+    swap_variants = []
+    for symmetric_variant in symmetric_variants 
+        function_sigs_copy = deepcopy(symmetric_variant)
+        for swap_pair in swap_name_pairs 
+            if (swap_pair[1] in map(x -> x.name, function_sigs_copy)) && (swap_pair[2] in map(x -> x.name, function_sigs_copy))
+                func1 = filter(x -> x.name == swap_pair[1], function_sigs_copy)[1]
+                def1 = func1.definition
+    
+                func2 = filter(x -> x.name == swap_pair[2], function_sigs_copy)[1]
+                def2 = func2.definition
+    
+                func1.definition = replace(def2, "color1_arg" => "color_arg") 
+                func2.definition = replace(def1, "color_arg" => "color1_arg")
+            end
+        end 
+
+        push!(swap_variants, function_sigs_copy)
+    end
+
+    symmetric_variants = map(y -> eval(Meta.parse(y)), unique(map(x -> repr(x), [symmetric_variants..., swap_variants...])))
 
     return symmetric_variants
 end
 
-function plot_relative_proportions(chains, mode, test_config_names, save_suffix="")
+function generate_same_different_bools(function_sigs)
+    type_signature_groups = Dict()
+    for f in function_sigs
+        type_signature = repr([f.arg_names..., f.arg_types...])
+        if !(type_signature in keys(type_signature_groups))
+            type_signature_groups[type_signature] = [f]
+        else
+            push!(type_signature_groups[type_signature], f)
+        end
+    end
+
+    bools = []
+    type_signatures = sort([keys(type_signature_groups)...], by=x -> findall(y -> repr([y.arg_names..., y.arg_types...]) == x,  all_function_sigs)[1])
+    for type_signature in type_signatures 
+        fs = type_signature_groups[type_signature]
+        if length(fs) > 1 
+            if fs[1].definition == fs[2].definition # definitions are the same
+                push!(bools, true)
+            else # definition are different
+                push!(bools, false)
+            end
+        else # only one definition, i.e. no paired function sig ('at')
+            push!(bools, true)
+        end
+    end
+    
+    return bools
+end
+
+function plot_relative_proportions(chains, mode, test_config_names, swap_name_pairs=[], save_suffix="", existing_plot=nothing, subset_start=-1)
     histograms = []
     map_estimates = []
     new_map_estimates = []
@@ -85,11 +142,39 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
             println(length(histograms))
             println(map_estimate)
             push!(map_estimates, map_estimate)
+            
+            # correct left/right labels
             new_map_est = correct_reversed_left_right_labels(eval(Meta.parse(map_estimate)), "left", test_config_names)
+
+            # correct left_of(_opposite)
+            if length(chains[end]) == 7 
+                if !("" in map(x -> x.definition, new_map_est))
+                    for swap_pair in swap_name_pairs 
+                    
+                        func1 = filter(x -> x.name == swap_pair[1], new_map_est)[1]
+                        def1 = func1.definition
+            
+                        func2 = filter(x -> x.name == swap_pair[2], new_map_est)[1]
+                        def2 = func2.definition
+            
+                        func1.definition = replace(def2, "color1_arg" => "color_arg") 
+                        func2.definition = replace(def1, "color_arg" => "color1_arg")
+                    
+                    end 
+            
+                end
+            end
+
             push!(new_map_estimates, repr(new_map_est))
-            symmetric_variants_dict[repr(new_map_est)] = generate_symmetric_variants(eval(Meta.parse(map_estimate)))
+            symmetric_variants_dict[repr(new_map_est)] = generate_symmetric_variants(eval(Meta.parse(map_estimate)), swap_name_pairs)
         end 
     end
+
+    @show symmetric_variants_dict 
+    @show histograms 
+    @show map_estimates
+    @show new_map_estimates 
+    @show corrected_map_estimates 
 
     new_to_old_map_estimate_dict = Dict(map(i -> new_map_estimates[i] => map_estimates[i], 1:length(new_map_estimates)))
 
@@ -134,8 +219,8 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
     legend_names = Dict([
         "geo" => "geometric",
         "at" => "associational",
-        "my_right" => "intrinsic egocentric",
-        "right_of" => "relative egocentric" 
+        "my_right" => "intrinsic ego.",
+        "right_of" => "relative ego." 
     ])
 
     age_group_legend_names = Dict([
@@ -147,7 +232,13 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
 
     if mode == "proportion"
     
-        p = ""
+        if !isnothing(existing_plot)
+            p = existing_plot
+        else
+            p = ""
+        end
+
+        seen_intrinsic = false
         for map_estimate_str in map_estimates 
             println(plot_data[map_estimate_str])
             println(sums)
@@ -161,13 +252,39 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
             end
             l = legend_names[l]
             println(l)
-            data = plot_data[map_estimate_str] ./ sums 
-            # data = map(i -> findall(x -> x == plot_data[map_estimate_str][i], all_results[i])[1], 1:length(plot_data[map_estimate_str]))
-            
-            if p == ""
-                p = plot(collect(0:length(chains)), data, label=l, linewidth=3, legend=:right, xlims = (0,length(chains)), xticks = 0:1:length(chains), ylims=(0, 1.1), yticks = 0:0.1:1)
-            else
-                p = plot!(p, collect(0:length(chains)), data, label=l, linewidth=3, legend=:right, xlims = (0,length(chains)), xticks = 0:1:length(chains), ylims=(0, 1.1), yticks = 0:0.1:1)
+
+            if isnothing(existing_plot) || !isnothing(existing_plot) && l == "intrinsic ego."
+                data = plot_data[map_estimate_str] ./ sums 
+                # data = map(i -> findall(x -> x == plot_data[map_estimate_str][i], all_results[i])[1], 1:length(plot_data[map_estimate_str]))
+                
+                lstyle = !isnothing(existing_plot) ? :dot : :solid 
+                cc = !isnothing(existing_plot) ? theme_palette(:auto)[9] : :auto
+                
+                if seen_intrinsic && l == "intrinsic ego." 
+                    l_ = "certain L/R"
+                    cc = :palegreen3
+                elseif !isnothing(existing_plot)
+                    l_ = "uncertain L/R"
+                    # cc = :yellowgreen
+                else
+                    l_ = l
+                end
+
+                if l == "intrinsic ego." 
+                    seen_intrinsic = true
+                end
+
+                if subset_start == -1
+                    if p == ""
+                        p = plot(collect(0:length(chains)), data, label=l_, linewidth=3, legend=:right, xlims = (0,length(chains)), xticks = 0:1:length(chains), ylims=(0, 1.1), yticks = 0:0.1:1, linestyle=lstyle, color=cc)
+                    else
+                        p = plot!(p, collect(0:length(chains)), data, label=l_, linewidth=3, legend=:right, xlims = (0,length(chains)), xticks = 0:1:length(chains), ylims=(0, 1.1), yticks = 0:0.1:1, linestyle=lstyle, color=cc)
+                    end
+                else
+                    @show data
+                    @show collect(subset_start:(subset_start - 1 + length(chains)))
+                    p = plot!(p, collect(subset_start:(subset_start - 1 + length(chains))), data[2:end], label=l_, linewidth=4, legend=:right, xlims = (0,length(chains)), xticks = 0:1:length(chains), ylims=(0, 1.1), yticks = 0:0.1:1, linestyle=lstyle, color=theme_palette(:auto)[9])
+                end
             end
         end
 
@@ -226,7 +343,7 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
                     vals = correlation_dict[(l, age_group)]
                 end
                 c = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
-                c = c * c
+                # c = c * c
                 push!(age_group_plot_data[age_group], c)
             end
         end
@@ -243,7 +360,7 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
         end
 
         xlabel!("Data", xguidefontsize=9)
-        ylabel!("R^2", yguidefontsize=9)
+        ylabel!("R", yguidefontsize=9)
         title!("Correlation between MAP Spatial LoT Model Predictions\nand Empirical Results vs. Training Data Volume", titlefontsize=10)
 
     elseif mode == "correlation_avg"
@@ -292,7 +409,7 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
                     end
 
                     c = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
-                    c = c * c
+                    # c = c * c
                     push!(weighted_correlations, c * prop)
                 end
                 push!(age_group_plot_data[age_group], sum(weighted_correlations))
@@ -311,13 +428,13 @@ function plot_relative_proportions(chains, mode, test_config_names, save_suffix=
         end
 
         xlabel!("Data", xguidefontsize=9)
-        ylabel!("R^2", yguidefontsize=9)
+        ylabel!("R", yguidefontsize=9)
         title!("Correlation between Weighted Spatial LoT Model Predictions\nand Empirical Results vs. Training Data Volume", titlefontsize=10)
 
     end
 
     if save_suffix != ""
-        savefig("$(mode)_$(save_suffix)_temp2.png")
+        savefig("$(mode)_$(save_suffix)_temp2_R.png")
     end
 
     return p
@@ -493,7 +610,7 @@ end
 #                     vals = all_correlation_dicts[l][age_group]
 #                 end
 #                 c = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
-#                 c = c * c
+#                 # c = c * c
 #                 push!(age_group_plot_data[age_group], c)
 #             end
 #         end
@@ -510,7 +627,7 @@ end
 #         end
 
 #         xlabel!("Data", xguidefontsize=9)
-#         ylabel!("R^2", yguidefontsize=9)
+#         ylabel!("R", yguidefontsize=9)
 #         title!("Correlation between MAP Spatial LoT Model Predictions\nand Empirical Results vs. Training Data Volume", titlefontsize=10)
 
 #     elseif mode == "correlation_avg"
@@ -559,7 +676,7 @@ end
 #                     end
 
 #                     c = round(cor(map(x -> x[1], vals), map(x -> x[2], vals)), digits=3)
-#                     c = c * c
+#                     # c = c * c
 #                     push!(weighted_correlations, c * prop)
 #                 end
 #                 push!(age_group_plot_data[age_group], sum(weighted_correlations))
@@ -578,7 +695,7 @@ end
 #         end
 
 #         xlabel!("Data", xguidefontsize=9)
-#         ylabel!("R^2", yguidefontsize=9)
+#         ylabel!("R", yguidefontsize=9)
 #         title!("Correlation between Weighted Spatial LoT Model Predictions\nand Empirical Results vs. Training Data Volume", titlefontsize=10)
 
 #     elseif mode == "scatter"
@@ -594,23 +711,44 @@ end
 # trial_name = "trial11_tiny_prior_copy"
 # trial_name = "trial13_tinier_prior_tiny_empty_prob"
 # trial_name = "trial14_tinier_prior_tiny_empty_prob_REPEAT"
-trial_name = "left_right_run2_repeats_"
+# trial_name = "left_right_run2_repeats_"
+trial_name = "left_right_run_LR_uncertainty_repeats_"
 # chain_filenames = readdir("metalanguage/results/mcmc/$(trial_name)")
-chain_filenames = filter(x -> occursin(trial_name, x), readdir("metalanguage/intermediate_outputs/intermediate_chains"))
+chain_filenames = filter(x -> occursin(trial_name, x) && !occursin("OLD", x) && !occursin("_v", x), readdir("metalanguage/intermediate_outputs/intermediate_chains"))
 chain_filenames = sort(chain_filenames, by=x -> parse(Int, replace(split(x, "_")[end], ".txt" => "")))
 # chain_filenames = [chain_filenames[1:12]..., chain_filenames[14:15]...]
 
+println(chain_filenames)
+
 chains = []
-for chain_filename in chain_filenames #[1:10]
+orig_chains = []
+for chain_filename in chain_filenames #[10:10] #[1:10]
     open("metalanguage/intermediate_outputs/intermediate_chains/$(chain_filename)", "r") do f 
         text = read(f, String)
-        obj = eval(Meta.parse(text))[750:end]
-        push!(chains, obj)
+        obj = eval(Meta.parse(text)) #[200:end]
+
+        formatted_obj = deepcopy(obj)
+        for x in formatted_obj 
+            if occursin("update_alpha(1.0) && location_arg.position.x < 0", repr(x)) && occursin("update_alpha(1.0) && location_arg.position.x > 0", repr(x))
+                
+                for f in x 
+                    f.definition = replace(f.definition, "update_alpha(1.0) && location_arg.position.x < 0" => "location_arg.position.x < 0")
+                    f.definition = replace(f.definition, "update_alpha(1.0) && location_arg.position.x > 0" => "location_arg.position.x > 0")
+                end
+
+            end
+        end
+        push!(chains, formatted_obj)
+        push!(orig_chains, obj)
     end
 end
 
-p = plot_relative_proportions(chains, "proportion", test_config_names, trial_name)
-p = plot_relative_proportions(chains, "rank", test_config_names, trial_name)
-p = plot_relative_proportions(chains, "correlation_map", test_config_names, trial_name)
-p = plot_relative_proportions(chains, "correlation_avg", test_config_names, trial_name)
-# # p = plot_relative_proportions(chains, "scatter", trial_name)
+p = plot_relative_proportions(chains, "proportion", test_config_names, [["left_of", "left_of_opposite"], ["right_of", "right_of_opposite"]], "$(trial_name)_debug")
+
+# p = plot_relative_proportions(chains, "proportion", test_config_names, [], trial_name)
+# p = plot_relative_proportions(orig_chains, "proportion", test_config_names, [], trial_name, p)
+
+# p = plot_relative_proportions(chains, "rank", test_config_names, [], trial_name)
+# p = plot_relative_proportions(chains, "correlation_map", test_config_names, [], trial_name)
+# p = plot_relative_proportions(chains, "correlation_avg", test_config_names, [], trial_name)
+# # p = plot_relative_proportions(chains, "scatter", [], trial_name)
