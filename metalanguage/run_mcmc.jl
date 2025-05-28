@@ -474,10 +474,6 @@ function generate_all_semantics(function_sig, base_semantics)
         "prev(location_arg, locations).color == color1_arg"
         ]), possible_semantics)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
     possible_semantics = sort(possible_semantics, by=x -> size(Meta.parse(x)))
     size_dict = Dict()
     for s in possible_semantics 
@@ -1029,12 +1025,9 @@ test_config_names = [
     "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-<<<<<<< HEAD
 all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function,  my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
-=======
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
->>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
+# all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 # results = []
 # for r in 1:20
 #     println("REPEATS = $(r)")
@@ -1092,16 +1085,14 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
-<<<<<<< HEAD
 # global repeats = 25
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
-=======
+
 # global repeats = 20
 # results = []
 # for repeats in 5:5
 #     println("----- REPEATS = $(repeats) -----")
 #     all_function_sigs = deepcopy([at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function]) # left_of_opposite_function
->>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
 
 #     prior_ = compute_prior_probability(all_function_sigs)
 #     likelihood_ = compute_likelihood(all_function_sigs, test_config_names, repeats)
@@ -1150,7 +1141,6 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 #     prior5_5 = compute_prior_probability(all_function_sigs)
 #     likelihood5_5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-<<<<<<< HEAD
 # println("PRIOR TWO")
 # println(prior2)
 # println("LIKELIHOOD TWO")
@@ -1158,10 +1148,8 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 # println(likelihood2)
 # println("POSTERIOR TWO")
 # println(prior2 * likelihood2)
-=======
 #     all_function_sigs[4].definition = "location_arg.wall2.color == color1_arg"
 #     all_function_sigs[7].definition = "location_arg.wall1.color == color1_arg"
->>>>>>> 16ddf941de195771f60417fc8f07a7e4e089fbcf
 
 #     prior5_75 = compute_prior_probability(all_function_sigs)
 #     likelihood5_75 = compute_likelihood(all_function_sigs, test_config_names, repeats)
