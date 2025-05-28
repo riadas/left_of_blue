@@ -39,7 +39,7 @@ all_results = []
 global max_elt = []
 # @show max_elt
 for p_idx in start_index:end_index
-    @show p_idx
+    @show p_idx 
     p = all_permutations[p_idx]
     # @show max_elt
     for function_sig in all_function_sigs 
