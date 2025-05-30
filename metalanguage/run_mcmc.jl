@@ -1088,12 +1088,9 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 
 # chain = run_mcmc(all_function_sigs, test_config_names, 1000, repeats)
 
-<<<<<<< HEAD
 # global repeats = 25
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 
-=======
->>>>>>> 1e5953526e897086be6c6fa1595b9a6b782d21ce
 # global repeats = 20
 # results = []
 # for repeats in 8:8
@@ -1147,7 +1144,6 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 #     prior5_5 = compute_prior_probability(all_function_sigs)
 #     likelihood5_5 = compute_likelihood(all_function_sigs, test_config_names, repeats)
 
-<<<<<<< HEAD
 # println("PRIOR TWO")
 # println(prior2)
 # println("LIKELIHOOD TWO")
@@ -1155,8 +1151,6 @@ all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_
 # println(likelihood2)
 # println("POSTERIOR TWO")
 # println(prior2 * likelihood2)
-=======
->>>>>>> 1e5953526e897086be6c6fa1595b9a6b782d21ce
 #     all_function_sigs[4].definition = "location_arg.wall2.color == color1_arg"
 #     all_function_sigs[7].definition = "location_arg.wall1.color == color1_arg"
 
