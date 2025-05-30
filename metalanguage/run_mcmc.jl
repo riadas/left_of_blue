@@ -3,22 +3,33 @@ using StatsBase
 using Combinatorics
 global repeats = 5
 global test_name = "mcmc_$(repeats)_new_sem_space_z"
-global alpha_num_funcs = 0.0000025 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
-global alpha_semantics_size = 0.1
+global alpha_num_funcs = 0.0000015 # 0.0000025 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+global alpha_semantics_size = 0.5 # 0.1
 global base_semantics_str = ""
-global alpha_AST_weight = 8 # 10
-global alpha_arg_weight = 6 # 3
-global alpha_name_length = 5
+global alpha_AST_weight = 10 # 8 # 10
+global alpha_arg_weight = 3 # 6 # 3
+global alpha_name_length = 0 # 5
 global alpha_empty_prob = 0.999999999983 # 0.99995 # 0.0001
 global alpha_empty_symmetry = 0.4
-global alpha_symmetry_over_non_symmetry = 0.999999 # 0.95
-global alpha_LR_uncertainty_bias = (0.5)^(5 * 7.5)
-global alpha_double_delete = 0.5
+global alpha_symmetry_over_non_symmetry = 0.95 # 0.999999 # 0.95
+global alpha_LR_uncertainty_bias = (0.5)^(4 * 7.5) # (0.5)^(5 * 7.5)
+global alpha_double_delete = 0 # 0.5
 global first_decision_weights = Dict([
     "edit" => 3,
     "add" => 3, 
     "delete" => 3,
 ])
+
+# 3LR setting, no "y"
+# global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
+# global alpha_semantics_size = 0.5
+# global base_semantics_str = ""
+# global alpha_AST_weight = 10 # 10
+# global alpha_arg_weight = 3
+# global alpha_empty_prob = 0.9999 # 0.0001
+# global alpha_empty_symmetry = 0.4
+# global alpha_symmetry_over_non_symmetry = 0.95
+# global alpha_LR_uncertainty_bias = (0.5)^(4 * 7.5)
 
 # no "y" setting with four func's
 # global alpha_num_funcs = 0.00000100 # 0.0000015, 0.0025, 0.01, 0.5 # global alpha_num_funcs = 0.0000015 # 0.0000015, 0.0025, 0.01, 0.5
@@ -1015,21 +1026,18 @@ test_config_names = [
     "square_room_blue_wall_center_prize_copy2.json",  
     "square_room_blue_wall_center_prize_copy3.json", 
     "square_room_blue_wall_center_prize_copy4.json",   
-    "square_room_blue_wall_center_prize_copy5.json",
+    # "square_room_blue_wall_center_prize_copy5.json",
     "spatial_lang_test_left_true_shift_0.json", 
     "spatial_lang_test_copy_left_true_shift_0.json", 
     "spatial_lang_test_copy2_left_true_shift_0.json",
     "spatial_lang_test_copy3_left_true_shift_0.json", 
-    "spatial_lang_test_copy4_left_true_shift_0.json", 
+    # "spatial_lang_test_copy4_left_true_shift_0.json", 
     "square_room_blue_wall_left_prize.json",
-    "square_room_blue_wall_far-left-corner_prize.json"
+    # "square_room_blue_wall_far-left-corner_prize.json"
 ]
 
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function,  my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
-# all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
+all_function_sigs = [at_function, my_left_function_spot, left_of_function, my_right_function_spot, right_of_function] # left_of_opposite_function
 # all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
-
-all_function_sigs = [at_function, my_left_function_spot, left_of_function, left_of_opposite_function, my_right_function_spot, right_of_function, right_of_opposite_function] # left_of_opposite_function
 
 # results = []
 # for r in 1:20
